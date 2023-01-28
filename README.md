@@ -24,7 +24,8 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
 
 ## Setting up the Script
 
-In the .env file put your discord bot token in the quotes.
+- In the .env file put your discord bot token in the quotes.
+- Remove the "blank" from "blank.env" so that it's just ".env"
 
 ## Running the Python Script
 ### Windows
