@@ -279,15 +279,21 @@ class Good_Day_Bot(discord.Client):
                             leader_board[y]["Third Place"] = leader_board[y][
                                 "Second Place"
                             ]
+                            print("1")
+                            print(leader_board)
                             # Move first place to second
                             leader_board[y]["Second Place"] = leader_board[y][
                                 "First Place"
                             ]
+                            print("2")
+                            print(leader_board)
                             # Move to to first place
                             leader_board[y]["First Place"] = {
                                 "User": x,
                                 y: user_stats[y],
                             }
+                            print("3")
+                            print(leader_board)
                         # If the user is higher than the second place replace it and move the old second place down to third place
                         elif user_stats[y] > int(leader_board[y]["Second Place"][y]):
                             # Move second place to third
@@ -306,8 +312,11 @@ class Good_Day_Bot(discord.Client):
                                 "User": x,
                                 y: user_stats[y],
                             }
+            print("4")
+            print(leader_board)
         # If the leaderboard exists then check it with the user name as long as the user name wasn't empty
-        if user != "":
+        # This may still have an issue with the same name on a leaderboard if the current streak is lost and there's not many users, but I'm not sure yet. We'll see.
+        elif user != "":
             # Getting the variables
             user_stats = {
                 "Good Days": int(good_days[user]["Stats"]["Good Days"]),
@@ -359,6 +368,8 @@ class Good_Day_Bot(discord.Client):
                         "User": user,
                         y: user_stats[y],
                     }
+            print("5")
+            print(leader_board)
         # Save to json
         with open(leaderboard_file_path, "w") as outputfile:
             json.dump(leader_board, outputfile, sort_keys=False, indent=4)

@@ -48,3 +48,22 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
 - Running After
     - cd /your/folder
     - source env/bin/activate && python3 Good_Day.py
+
+## Using Docker if desired
+- Set up the scrpt as you would've before
+- Get into the directory
+    - cd /your/folder
+- Build the docker image
+    - docker build -t discord_good_day
+- Run the docker image as a container
+    - docker run discord_good_day
+- To stop the docker container
+    - Get the docker name
+        - docker ps
+            - Copy the container ID or the container name
+    - Stop the container (with what you copied)
+        - docker stop copied_container
+- To start back up that container (with what you copied)
+    - docker start copied_container
+- To delete the container if you need to (with what you copied)
+    - docker rm copied_container
