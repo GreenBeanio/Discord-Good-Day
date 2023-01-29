@@ -10,11 +10,12 @@ import datetime
 # endregion Import Modules
 # region Variables
 good_days = {}  # Used to load and store data about the good days
+leader_board = {}  # Used to load and store the leaderboards
 directory_path = (
     str(Path().resolve()) + "\Data\\"
-)  # Get the location to store the files
-file_path = directory_path + "data.json"
-
+)  # Get the location of the directory and files
+user_file_path = directory_path + "users.json"  # Path the the user information
+leaderboard_file_path = directory_path + "leaderboard.json"  # Path to the leaderboards
 discord_token = ""  # Variable for discord token
 # endregion Variables
 # region Initializing
@@ -24,19 +25,29 @@ discord_token = os.getenv("DISCORD_TOKEN")
 # Make direcotry if it doesn't exist
 if os.path.exists(directory_path) == False:
     os.mkdir(directory_path)
-# Make file if it doesn't exist
-if os.path.exists(file_path) == False:
-    new_file = open(file_path, "x")
+# Make user file if it doesn't exist
+if os.path.exists(user_file_path) == False:
+    new_file = open(user_file_path, "x")
     new_file.close()
-# Load json
-with open(file_path) as inputfile:
+# Load the user data from json
+with open(user_file_path) as inputfile:
     # Try to open the json file, and if it's blank/broken pass
     try:
         good_days = json.load(inputfile)
     except:
         pass
+# Make leaderboard file if it doesn't exist
+if os.path.exists(leaderboard_file_path) == False:
+    new_file = open(leaderboard_file_path, "x")
+    new_file.close()
+# Load the leaderboard data from json
+with open(leaderboard_file_path) as inputfile:
+    # Try to open the json file, and if it's blank/broken pass
+    try:
+        leader_board = json.load(inputfile)
+    except:
+        pass
 # endregion Initializing
-
 # Class for the Good Day bot
 class Good_Day_Bot(discord.Client):
     # When the bot connects to Discord
@@ -87,7 +98,7 @@ class Good_Day_Bot(discord.Client):
                         top_streak = good_days[user]["Streaks"]["Top Streak"]
                         current_streak = good_days[user]["Streaks"]["Current Streak"]
                         await message.channel.send(
-                            f"\U0001F913 <@{user}> has the following \U0001F913 :\
+                            f"\U0001F913 <@{user}> has the following: \U0001F913\
                                 \n\U0001F975 They've had {day_number} Good Days! \U0001F975\
                                 \n\U0001F92F Their Last Good Day was {last_day}! \U0001F92F\
                                 \n\U0001F973 Their Top Streak was {top_streak}! \U0001F973\
@@ -101,12 +112,36 @@ class Good_Day_Bot(discord.Client):
 
                 # Check the first 5 for the "!lead" command
                 elif message.content[0:5] == "!lead":
-                    # Checks the leaderbaord
-                    #### Make a leader board!!! Using the stats for days, current streak, and top streak
-                    ### Just have it be a diferent section in the json file probably. Store top 3 maybe
-                    # Send the message
-                    #### Probably want to make this fancy
-                    await message.channel.send("Not made yet")
+                    # Initailize the leaderboard if it is empty
+                    if len(leader_board) == 0:
+                        self.update_leaderboard("")
+                    # Getting the message text
+                    message_text = ""  # Used for storing the result
+                    for x in leader_board:
+                        message_text += f"\n-------------------------------------------------\
+                        \n{x}\
+                        \n-------------------------------------------------"
+                        for y in ["First Place", "Second Place", "Third Place"]:
+                            # If the user isn't empty
+                            if leader_board[x][y]["User"] != "Empty":
+                                # HaHa Emoji
+                                emoji = ""
+                                if y == "First Place":
+                                    emoji = "\U0001F438"
+                                elif y == "Second Place":
+                                    emoji = "\U0001F98E"
+                                elif y == "Third Place":
+                                    emoji = "\U0001F422"
+                                message_text += f'\n{y}: {emoji} <@{leader_board[x][y]["User"]}> with {leader_board[x][y][x]} days! {emoji}'
+                            else:
+                                message_text += (
+                                    f"\n{y}: \U0001F614 No \U0001F635 One \U0001F631"
+                                )
+                    message_text += (
+                        f"\n-------------------------------------------------"
+                    )
+                    # Send message
+                    await message.channel.send(message_text)
                 # Check the first 5 for the "!help" command
                 elif message.content[0:5] == "!help":
                     # Gives instructions
@@ -190,6 +225,8 @@ class Good_Day_Bot(discord.Client):
             # Updating days
             good_days[user]["Stats"]["Good Days"] += 1
             good_days[user]["Stats"]["Last Good Day"] = day
+            # Update the leaderboard
+            self.update_leaderboard(user)
         # If just checking if the current streak is accurate
         else:
             # Checking if a streak was lost
@@ -197,8 +234,134 @@ class Good_Day_Bot(discord.Client):
                 # The streak was lost
                 good_days[user]["Streaks"]["Current Streak"] = 0
         # Saving json
-        with open(file_path, "w") as outputfile:
+        with open(user_file_path, "w") as outputfile:
             json.dump(good_days, outputfile, sort_keys=False, indent=4)
+
+    ### Check the leaderboard
+    def update_leaderboard(self, user):
+        # Have to have leader_board be global
+        global leader_board
+        # If the leaderboard is empty create it
+        if len(leader_board) == 0:
+            # Create an empty leaderboard
+            leader_board["Good Days"] = {
+                "First Place": {"User": "Empty", "Good Days": "0"},
+                "Second Place": {"User": "Empty", "Good Days": "0"},
+                "Third Place": {"User": "Empty", "Good Days": "0"},
+            }
+            leader_board["Top Streak"] = {
+                "First Place": {"User": "Empty", "Top Streak": "0"},
+                "Second Place": {"User": "Empty", "Top Streak": "0"},
+                "Third Place": {"User": "Empty", "Top Streak": "0"},
+            }
+            leader_board["Current Streak"] = {
+                "First Place": {"User": "Empty", "Current Streak": "0"},
+                "Second Place": {"User": "Empty", "Current Streak": "0"},
+                "Third Place": {"User": "Empty", "Current Streak": "0"},
+            }
+            # initialize the leaderboard if their are users in the list if not then leave as is
+            if len(good_days) != 0:
+                # For every user check their stats
+                for x in good_days:
+                    # Getting the variables
+                    user_stats = {
+                        "Good Days": int(good_days[x]["Stats"]["Good Days"]),
+                        "Top Streak": int(good_days[x]["Streaks"]["Top Streak"]),
+                        "Current Streak": int(
+                            good_days[x]["Streaks"]["Current Streak"]
+                        ),
+                    }
+                    # Checking leaderboards in each category
+                    for y in ["Good Days", "Top Streak", "Current Streak"]:
+                        # If the user is higher than the first place replace it and move the old first place down to second place
+                        if user_stats[y] > int(leader_board[y]["First Place"][y]):
+                            # Move second place to third
+                            leader_board[y]["Third Place"] = leader_board[y][
+                                "Second Place"
+                            ]
+                            # Move first place to second
+                            leader_board[y]["Second Place"] = leader_board[y][
+                                "First Place"
+                            ]
+                            # Move to to first place
+                            leader_board[y]["First Place"] = {
+                                "User": x,
+                                y: user_stats[y],
+                            }
+                        # If the user is higher than the second place replace it and move the old second place down to third place
+                        elif user_stats[y] > int(leader_board[y]["Second Place"][y]):
+                            # Move second place to third
+                            leader_board[y]["Third Place"] = leader_board[y][
+                                "Second Place"
+                            ]
+                            # Move to second place
+                            leader_board[y]["Second Place"] = {
+                                "User": x,
+                                y: user_stats[y],
+                            }
+                        # If the user is higher than the third place replace it and boot the old second place from the leaderboard
+                        elif user_stats[y] > int(leader_board[y]["Third Place"][y]):
+                            # Move to third place
+                            leader_board[y]["Third Place"] = {
+                                "User": x,
+                                y: user_stats[y],
+                            }
+        # If the leaderboard exists then check it with the user name as long as the user name wasn't empty
+        if user != "":
+            # Getting the variables
+            user_stats = {
+                "Good Days": int(good_days[user]["Stats"]["Good Days"]),
+                "Top Streak": int(good_days[user]["Streaks"]["Top Streak"]),
+                "Current Streak": int(good_days[user]["Streaks"]["Current Streak"]),
+            }
+            # Checking leaderboards in each category
+            for y in ["Good Days", "Top Streak", "Current Streak"]:
+                # If the user is higher than the first place replace it and move the old first place down to second place
+                if user_stats[y] > int(leader_board[y]["First Place"][y]):
+                    # If you aren't breaking your own highscore add yourself
+                    if leader_board[y]["First Place"][y] != user:
+                        # Move second place to third
+                        leader_board[y]["Third Place"] = leader_board[y]["Second Place"]
+                        # Move first place to second
+                        leader_board[y]["Second Place"] = leader_board[y]["First Place"]
+                        # Move to to first place
+                        leader_board[y]["First Place"] = {
+                            "User": user,
+                            y: user_stats[y],
+                        }
+                    # If you are breaking your own highscore then update only yourself
+                    else:
+                        leader_board[y]["First Place"] = {
+                            "User": user,
+                            y: user_stats[y],
+                        }
+                # If the user is higher than the second place replace it and move the old second place down to third place
+                elif user_stats[y] > int(leader_board[y]["Second Place"][y]):
+                    # If you aren't breaking your own highscore add yourself
+                    if leader_board[y]["Second Place"][y] != user:
+                        # Move second place to third
+                        leader_board[y]["Third Place"] = leader_board[y]["Second Place"]
+                        # Move to second place
+                        leader_board[y]["Second Place"] = {
+                            "User": user,
+                            y: user_stats[y],
+                        }
+                    # If you are breaking your own highscore then update only yourself
+                    else:
+                        leader_board[y]["Second Place"] = {
+                            "User": user,
+                            y: user_stats[y],
+                        }
+                # If the user is higher than the third place replace it and boot the old second place from the leaderboard
+                elif user_stats[y] > int(leader_board[y]["Third Place"][y]):
+                    # Move to third place (No need to check if updating youself because it gets replaced either way)
+                    leader_board[y]["Third Place"] = {
+                        "User": user,
+                        y: user_stats[y],
+                    }
+        # Save to json
+        with open(leaderboard_file_path, "w") as outputfile:
+            json.dump(leader_board, outputfile, sort_keys=False, indent=4)
 
 
 # Setting the bots intentions
