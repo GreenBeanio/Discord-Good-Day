@@ -49,7 +49,7 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
     - cd /your/folder
     - source env/bin/activate && python3 Good_Day.py
 
-## Using Docker if desired
+## Using Docker if Desired
 - Set up the scrpt as you would've before
 - Get into the directory
     - cd /your/folder
