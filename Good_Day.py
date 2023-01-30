@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # region Import Modules
 import discord
+from discord.ext import tasks
 import os
 from dotenv import load_dotenv
 import json
@@ -52,7 +53,15 @@ with open(leaderboard_file_path) as inputfile:
 class Good_Day_Bot(discord.Client):
     # When the bot connects to Discord
     async def on_ready(self):
+        # Printing a log message
         print(f"{self.user.name} Bot: connected to the server")
+        # Getting tomorrows midnight
+        tomorrow = self.Get_Midnight()
+        # Wating until midnight tomorrow to start the loop (if it isn't already running somehow)
+        if not self.Daily_Refresh.is_running():
+            await discord.utils.sleep_until(tomorrow)
+            # Start a rerfresh loop
+            await self.Daily_Refresh.start()
 
     # When someone sends a message in the server
     async def on_message(self, message):
@@ -71,7 +80,7 @@ class Good_Day_Bot(discord.Client):
             if message.content[0:1] == "!":
                 # Check the first 5 for the "!days" command
                 if message.content[0:5] == "!days":
-                    # Variable for the user to checl
+                    # Variable for the user to check
                     user = ""
                     # Check player names stats
                     if len(message.content) == 5:
@@ -477,6 +486,33 @@ class Good_Day_Bot(discord.Client):
         # Save to json
         with open(leaderboard_file_path, "w") as outputfile:
             json.dump(leader_board, outputfile, sort_keys=False, indent=4)
+
+    ### Get Next Midnight
+    def Get_Midnight(self):
+        # Getting todays date
+        today = datetime.date.today()
+        # Getting tommorows date
+        tomorrow = today + datetime.timedelta(days=1)
+        # Converting into a datetime with no minutes (midnight)
+        midnight_naive = datetime.datetime.combine(
+            tomorrow, datetime.datetime.min.time()
+        )
+        # Giving it your local timezone
+        midnight_aware = midnight_naive.astimezone()
+        return midnight_aware
+
+    ### Daily Refresh to Check Users and Leaderboard every day at midnight
+    @tasks.loop(hours=24)
+    async def Daily_Refresh(self):
+        # Update all users and the leaderboard
+        for x in good_days:
+            # Update the users stats
+            today = datetime.datetime.strftime(datetime.date.today(), "%Y-%m-%d")
+            self.Update_Stats(str(x), str(today), False)
+            # Updating the leaderboard
+            self.update_leaderboard(x)
+        # Update the presence to no one is having a good day :^(
+        await self.update_presence("")
 
 
 # Setting the bots intentions
