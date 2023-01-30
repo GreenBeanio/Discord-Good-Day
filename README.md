@@ -21,6 +21,7 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
 ## What you will need
 - Python
 - Discord Bot Token
+- Docker (Optional)
 
 ## Setting up the Script
 
