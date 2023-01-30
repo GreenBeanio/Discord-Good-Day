@@ -13,7 +13,7 @@ import datetime
 good_days = {}  # Used to load and store data about the good days
 leader_board = {}  # Used to load and store the leaderboards
 directory_path = (
-    str(Path().resolve()) + "\Data\\"
+    str(Path().resolve()) + "/Data/"
 )  # Get the location of the directory and files
 user_file_path = directory_path + "users.json"  # Path the the user information
 leaderboard_file_path = directory_path + "leaderboard.json"  # Path to the leaderboards
