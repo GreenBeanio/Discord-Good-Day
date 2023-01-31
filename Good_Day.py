@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import json
 from pathlib import Path
 import datetime
+import zoneinfo
 
 # endregion Import Modules
 # region Variables
@@ -22,7 +23,15 @@ discord_token = ""  # Variable for discord token
 # region Initializing
 # Load envrionment variables
 load_dotenv()
-discord_token = os.getenv("DISCORD_TOKEN")
+discord_token = str(os.getenv("DISCORD_TOKEN"))
+time_zone_string = str(os.getenv("TIME_ZONE"))
+using_timezone = False  # Used for noting if a timezone is being used or local
+time_zone = ""  # Used for storing the timezone
+if time_zone_string != "":
+    using_timezone = True  # Set true if there is a timezone, if not leave false
+    time_zone = zoneinfo.ZoneInfo(
+        time_zone_string
+    )  # Set a timezone if there is one, if not leave as an empty string
 # Make direcotry if it doesn't exist
 if os.path.exists(directory_path) == False:
     os.mkdir(directory_path)
@@ -97,10 +106,17 @@ class Good_Day_Bot(discord.Client):
                     # If they have had a good day
                     if str(user) in good_days:
                         # Updating the streak, just in case they haven't been having good days and updating it
-                        today = datetime.datetime.strftime(
-                            datetime.date.today(), "%Y-%m-%d"
-                        )
-                        self.Update_Stats(str(user), str(today), False)
+                        today_string = ""
+                        if using_timezone == True:
+                            today = datetime.datetime.today().astimezone(time_zone)
+                            today_string = datetime.datetime.strftime(
+                                today,
+                                "%Y-%m-%d",
+                            )
+                        else:
+                            today = datetime.datetime.today().astimezone()
+                            today_string = datetime.datetime.strftime(today, "%Y-%m-%d")
+                        self.Update_Stats(str(user), str(today_string), False)
                         # Writing the information
                         day_number = good_days[user]["Stats"]["Good Days"]
                         last_day = good_days[user]["Stats"]["Last Good Day"]
@@ -163,10 +179,17 @@ class Good_Day_Bot(discord.Client):
                     # Update the activity for the user having a good day, even if they already did it today
                     await self.update_presence(message.author.name)
                     # Update the data on their good day status
-                    today = datetime.datetime.strftime(
-                        datetime.date.today(), "%Y-%m-%d"
-                    )
-                    self.Check_User_Days(str(message.author.id), str(today))
+                    today_string = ""
+                    if using_timezone == True:
+                        today = datetime.datetime.today().astimezone(time_zone)
+                        today_string = datetime.datetime.strftime(
+                            today,
+                            "%Y-%m-%d",
+                        )
+                    else:
+                        today = datetime.datetime.today().astimezone()
+                        today_string = datetime.datetime.strftime(today, "%Y-%m-%d")
+                    self.Check_User_Days(str(message.author.id), str(today_string))
 
     # Updates who is having a good day
     async def update_presence(self, user=""):
@@ -212,14 +235,18 @@ class Good_Day_Bot(discord.Client):
         global good_days
         # Getting yesterdays date
         last_good_day = good_days[user]["Stats"]["Last Good Day"]
-        yesterday = datetime.datetime.strptime(
-            day, "%Y-%m-%d"
-        ).date() - datetime.timedelta(days=1)
+        yesterday = datetime.datetime.strptime(day, "%Y-%m-%d") - datetime.timedelta(
+            days=1
+        )
+        yesterday_string = datetime.datetime.strftime(
+            yesterday,
+            "%Y-%m-%d",
+        )
         # If a good day has been done and need updated
         if update == True:
             # Update the Streaks
             # If today was right after the last good day then increase the streak
-            if last_good_day == str(yesterday):
+            if last_good_day == str(yesterday_string):
                 # Increasign the streak
                 good_days[user]["Streaks"]["Current Streak"] += 1
                 # Check if it's their new top streak
@@ -229,7 +256,7 @@ class Good_Day_Bot(discord.Client):
                     good_days[user]["Streaks"]["Top Streak"] += 1
             # Checking if a streak was lost
             # If the last good day isn't today or yesterday (they haven't said good day yet) then they lose their streak
-            elif last_good_day != day and last_good_day != str(yesterday):
+            elif last_good_day != day and last_good_day != str(yesterday_string):
                 good_days[user]["Streaks"]["Current Streak"] = 0
             # Updating days
             good_days[user]["Stats"]["Good Days"] += 1
@@ -239,7 +266,7 @@ class Good_Day_Bot(discord.Client):
         # If just checking if the current streak is accurate
         else:
             # Checking if a streak was lost
-            if last_good_day != day and last_good_day != str(yesterday):
+            if last_good_day != day and last_good_day != str(yesterday_string):
                 # The streak was lost
                 good_days[user]["Streaks"]["Current Streak"] = 0
         # Saving json
@@ -489,17 +516,17 @@ class Good_Day_Bot(discord.Client):
 
     ### Get Next Midnight
     def Get_Midnight(self):
-        # Getting todays date
-        today = datetime.date.today()
-        # Getting tommorows date
-        tomorrow = today + datetime.timedelta(days=1)
-        # Converting into a datetime with no minutes (midnight)
-        midnight_naive = datetime.datetime.combine(
-            tomorrow, datetime.datetime.min.time()
-        )
-        # Giving it your local timezone
-        midnight_aware = midnight_naive.astimezone()
-        return midnight_aware
+        midnight = ""
+        if using_timezone == True:
+            today = datetime.datetime.today().astimezone(time_zone)
+            tomorrow = today + datetime.timedelta(days=1)
+            midnight = datetime.datetime.combine(tomorrow, datetime.datetime.min.time())
+
+        else:
+            today = datetime.datetime.today().astimezone()
+            tomorrow = today + datetime.timedelta(days=1)
+            midnight = datetime.datetime.combine(tomorrow, datetime.datetime.min.time())
+        return midnight
 
     ### Daily Refresh to Check Users and Leaderboard every day at midnight
     @tasks.loop(hours=24)
@@ -507,8 +534,17 @@ class Good_Day_Bot(discord.Client):
         # Update all users and the leaderboard
         for x in good_days:
             # Update the users stats
-            today = datetime.datetime.strftime(datetime.date.today(), "%Y-%m-%d")
-            self.Update_Stats(str(x), str(today), False)
+            today_string = ""
+            if using_timezone == True:
+                today = datetime.datetime.today().astimezone(time_zone)
+                today_string = datetime.datetime.strftime(
+                    today,
+                    "%Y-%m-%d",
+                )
+            else:
+                today = datetime.datetime.today().astimezone()
+                today_string = datetime.datetime.strftime(today, "%Y-%m-%d")
+            self.Update_Stats(str(x), str(today_string), False)
             # Updating the leaderboard
             self.update_leaderboard(x)
         # Update the presence to no one is having a good day :^(

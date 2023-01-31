@@ -21,11 +21,13 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
 ## What you will need
 - Python
 - Discord Bot Token
+- IANA Time Zone (Optional)
 - Docker (Optional)
 
 ## Setting up the Script
 
 - In the .env file put your discord bot token in the quotes.
+- Optionally you can enter in an IANA Time Zone to use a specific time zone. If one is not entered it will use the local time zone of the system hosting the script.
 - Remove the "blank" from "blank.env" so that it's just ".env"
 
 ## Running the Python Script
