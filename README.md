@@ -27,7 +27,7 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
 ## Setting up the Script
 
 - In the .env file put your discord bot token in the quotes.
-- Either enter and IANA Time Zone or leave an empty string. If it is left as an empty string it will use the local time zone of the system hosting the script.
+- Either enter an IANA Time Zone (Ex: "America/New_York") or leave an empty string. If it is left as an empty string it will use the local time zone of the system hosting the script.
 - Remove the "blank" from "blank.env" so that it's just ".env"
 
 ## Running the Python Script
