@@ -9,6 +9,7 @@ from pathlib import Path
 import datetime
 import zoneinfo
 
+
 # endregion Import Modules
 # region Variables
 good_days = {}  # Used to load and store data about the good days
