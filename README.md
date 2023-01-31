@@ -19,7 +19,7 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
     - Lists the commands available.
 
 ## What you will need
-- Python
+- Python 3.9+
 - Discord Bot Token
 - IANA Time Zone (Optional)
 - Docker (Optional)
@@ -27,7 +27,7 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
 ## Setting up the Script
 
 - In the .env file put your discord bot token in the quotes.
-- Optionally you can enter in an IANA Time Zone to use a specific time zone. If one is not entered it will use the local time zone of the system hosting the script.
+- Either enter and IANA Time Zone or leave an empty string. If it is left as an empty string it will use the local time zone of the system hosting the script.
 - Remove the "blank" from "blank.env" so that it's just ".env"
 
 ## Running the Python Script
