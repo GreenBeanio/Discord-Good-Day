@@ -74,18 +74,16 @@ class Good_Day_Bot(discord.Client):
     async def on_ready(self):
         # Printing a log message
         print(f"{self.user.name} Bot: connected to the server")
-        # Getting tomorrows midnight
-        tomorrow = self.Get_Tomorrow(
-            day=self.Get_Today(output_string=False), output_string=False
-        )
+        # Starting with a Daily Refresh
+        await self.Daily_Refresh()
         # Wating until midnight tomorrow to start the loop (if it isn't already running somehow)
-        if not self.Daily_Refresh.is_running():
+        if not self.Daily_Refresh_Loop.is_running():
             # Getting time until midnight
             time_until_midnight = await self.Time_Until_Midnight()
             # Waiting until midnight
             await asyncio.sleep(time_until_midnight.total_seconds())
             # Start a refresh loop
-            await self.Daily_Refresh.start()
+            await self.Daily_Refresh_Loop.start()
 
     # When someone sends a message in the server
     async def on_message(self, message):
@@ -121,9 +119,9 @@ class Good_Day_Bot(discord.Client):
                     # If they have had a good day
                     if str(user) in good_days:
                         # Updating the streak, just in case they haven't been having good days and updating it
-                        self.Update_Stats(
+                        await self.Update_Stats(
                             user=str(user),
-                            day=self.Get_Today(output_string=False),
+                            day=await self.Get_Today(output_string=False),
                             update=False,
                         )
                         # Writing the information
@@ -144,11 +142,11 @@ class Good_Day_Bot(discord.Client):
                             "\U0001F62D I'm so sorry. They have never had a good day \U0001F62D"
                         )
 
-                # Check the first 5 for the "!leaderboard" command
+                # Check the first 12 for the "!leaderboard" command
                 elif message.content[0:12] == "!leaderboard":
                     # Initailize the leaderboard if it is empty
                     if len(leader_board) == 0:
-                        self.update_leaderboard(user="")
+                        await self.update_leaderboard(user="")
                     # Getting the message text
                     message_text = ""  # Used for storing the result
                     for x in leader_board:
@@ -186,7 +184,9 @@ class Good_Day_Bot(discord.Client):
                 # Check uptime
                 elif message.content[0:7] == "!uptime":
                     # Calculate Timedelta of Time from Start
-                    uptime_delta = self.Get_Today(output_string=False) - start_time
+                    uptime_delta = (
+                        await self.Get_Today(output_string=False) - start_time
+                    )
                     # Convert into string
                     elapsed = await self.Timedelta_To_String(
                         timedelta=uptime_delta, include_day=True
@@ -198,7 +198,7 @@ class Good_Day_Bot(discord.Client):
                 elif message.content[0:5] == "!time":
                     # Converting today into a string (Doing this separately for timezone)
                     today_string = datetime.datetime.strftime(
-                        self.Get_Today(output_string=False),
+                        await self.Get_Today(output_string=False),
                         "%Y-%m-%d %H:%M:%S %Z",
                     )
                     # Getting time until Midnight
@@ -218,8 +218,8 @@ class Good_Day_Bot(discord.Client):
                     # Update the activity for the user having a good day, even if they already did it today
                     await self.update_presence(user=message.author.name)
                     # Update the data on their good day status
-                    today = self.Get_Today(output_string=False)
-                    self.Check_User_Days(user=str(message.author.id), day=today)
+                    today = await self.Get_Today(output_string=False)
+                    await self.Check_User_Days(user=str(message.author.id), day=today)
 
     # Updates who is having a good day
     async def update_presence(self, user=""):
@@ -235,7 +235,7 @@ class Good_Day_Bot(discord.Client):
         await self.change_presence(activity=activity)
 
     # Checking Dictionary
-    def Check_User_Days(self, user, day):
+    async def Check_User_Days(self, user, day):
         # Have to have good_days be global
         global good_days
         # Get today as a string (instead of calling the function again)
@@ -252,7 +252,7 @@ class Good_Day_Bot(discord.Client):
                 # Add the new day
                 good_days[user]["Days"][f"Day {had_days+1}"] = day_string
                 # Add to their stats
-                self.Update_Stats(user=user, day=day, update=True)
+                await self.Update_Stats(user=user, day=day, update=True)
         # If the user is new
         else:
             # Add the new user, day, and empty data
@@ -262,16 +262,16 @@ class Good_Day_Bot(discord.Client):
                 "Days": {"Day 1": day_string},
             }
             # Add to their stats
-            self.Update_Stats(user=user, day=day, update=True)
+            await self.Update_Stats(user=user, day=day, update=True)
 
     ### Check the users stats
-    def Update_Stats(self, user, day, update):
+    async def Update_Stats(self, user, day, update):
         # Have to have good_days be global
         global good_days
         # Getting last good day
         last_good_day = good_days[user]["Stats"]["Last Good Day"]
         # Getting yesterdays date
-        yesterday_string = self.Get_Yesterday(day=day, output_string=True)
+        yesterday_string = await self.Get_Yesterday(day=day, output_string=True)
         # Get today as a string (instead of calling the function again)
         day_string = datetime.datetime.strftime(
             day,
@@ -297,7 +297,7 @@ class Good_Day_Bot(discord.Client):
             good_days[user]["Stats"]["Good Days"] += 1
             good_days[user]["Stats"]["Last Good Day"] = day_string
             # Update the leaderboard
-            self.update_leaderboard(user=user)
+            await self.update_leaderboard(user=user)
         # If just checking if the current streak is accurate
         else:
             # Checking if a streak was lost
@@ -309,7 +309,7 @@ class Good_Day_Bot(discord.Client):
             json.dump(good_days, outputfile, sort_keys=False, indent=4)
 
     ### Check the leaderboard
-    def update_leaderboard(self, user):
+    async def update_leaderboard(self, user):
         # Have to have leader_board be global
         global leader_board
         # If the leaderboard is empty create it
@@ -550,7 +550,7 @@ class Good_Day_Bot(discord.Client):
             json.dump(leader_board, outputfile, sort_keys=False, indent=4)
 
     ### Getting Today
-    def Get_Today(self, output_string):
+    async def Get_Today(self, output_string):
         # Getting Today's Time
         today = ""
         if using_timezone == True:
@@ -567,7 +567,7 @@ class Good_Day_Bot(discord.Client):
         return today
 
     ### Getting Yesterday
-    def Get_Yesterday(self, day, output_string):
+    async def Get_Yesterday(self, day, output_string):
         # Getting Yesterday
         yesterday = ""
         if using_timezone == True:
@@ -590,7 +590,7 @@ class Good_Day_Bot(discord.Client):
         return yesterday
 
     ### Get Tomorrow
-    def Get_Tomorrow(self, day, output_string):
+    async def Get_Tomorrow(self, day, output_string):
         # Getting Tomorrow
         tomorrow = ""
         if using_timezone == True:
@@ -612,18 +612,22 @@ class Good_Day_Bot(discord.Client):
         # Return Tomorrow
         return tomorrow
 
-    ### Daily Refresh to Check Users and Leaderboard every day at midnight
+    ### Daily Refresh Loop to Check Users and Leaderboard every day at midnight
     @tasks.loop(hours=24)
+    async def Daily_Refresh_Loop(self):
+        # Run the refresh
+        await self.Daily_Refresh()
+
+    ### Daily Refresh
     async def Daily_Refresh(self):
-        print("example")
         # Update all users and the leaderboard
         for x in good_days:
             # Update the users stats
-            self.Update_Stats(
-                user=str(x), day=self.Get_Today(output_string=False), update=False
+            await self.Update_Stats(
+                user=str(x), day=await self.Get_Today(output_string=False), update=False
             )
             # Updating the leaderboard
-            self.update_leaderboard(user=x)
+            await self.update_leaderboard(user=x)
         # Update the presence to no one is having a good day :^(
         await self.update_presence(user="")
 
@@ -650,9 +654,9 @@ class Good_Day_Bot(discord.Client):
     ### Calculate Time Until Midnight
     async def Time_Until_Midnight(self):
         # Calculate Timedelta of Time until Midnight
-        time_until_midnight = self.Get_Tomorrow(
-            day=self.Get_Today(output_string=False), output_string=False
-        ) - self.Get_Today(output_string=False)
+        time_until_midnight = await self.Get_Tomorrow(
+            day=await self.Get_Today(output_string=False), output_string=False
+        ) - await self.Get_Today(output_string=False)
         return time_until_midnight
 
 
