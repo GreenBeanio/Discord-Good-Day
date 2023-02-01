@@ -583,8 +583,8 @@ class Good_Day_Bot(discord.Client):
         if using_timezone == True:
             yesterday = day - datetime.timedelta(days=1)
             yesterday = datetime.datetime.combine(
-                yesterday, datetime.datetime.min.time()
-            ).astimezone(time_zone)
+                yesterday, datetime.datetime.min.time(), tzinfo=time_zone
+            )
         else:
             yesterday = day - datetime.timedelta(days=1)
             yesterday = datetime.datetime.combine(
@@ -606,8 +606,8 @@ class Good_Day_Bot(discord.Client):
         if using_timezone == True:
             tomorrow = day + datetime.timedelta(days=1)
             tomorrow = datetime.datetime.combine(
-                tomorrow, datetime.datetime.min.time()
-            ).astimezone(time_zone)
+                tomorrow.date(), datetime.datetime.min.time(), tzinfo=time_zone
+            )
         else:
             tomorrow = day + datetime.timedelta(days=1)
             tomorrow = datetime.datetime.combine(
