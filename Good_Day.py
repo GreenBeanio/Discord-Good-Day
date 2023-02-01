@@ -181,9 +181,11 @@ class Good_Day_Bot(discord.Client):
                     )
                 # Check uptime
                 elif message.content[0:7] == "!uptime":
-                    # Get elapsed time
-                    elapsed = await self.uptime(
-                        current_time=self.Get_Today(output_string=False)
+                    # Calculate Timedelta of Time from Start
+                    uptime_delta = self.Get_Today(output_string=False) - start_time
+                    # Convert into string
+                    elapsed = await self.Timedelta_To_String(
+                        timedelta=uptime_delta, include_day=True
                     )
                     await message.channel.send(
                         f"\U0001F607 I have been tracking Good Days for {elapsed}! \U0001F607"
@@ -192,28 +194,25 @@ class Good_Day_Bot(discord.Client):
                 elif message.content[0:5] == "!time":
                     # Getting Times in Data Time
                     today = self.Get_Today(output_string=False)
-                    yesterday = self.Get_Yesterday(
-                        day=self.Get_Today(output_string=False), output_string=False
-                    )
-                    tomorrow = self.Get_Tomorrow(
-                        day=self.Get_Today(output_string=False), output_string=False
-                    )
-                    # Converting into strings (Have to do this separately for timezone)
+                    # Converting today into a string (Doing this separately for timezone)
                     today_string = datetime.datetime.strftime(
                         today,
                         "%Y-%m-%d %H:%M:%S %Z",
                     )
-                    yesterday_string = datetime.datetime.strftime(
-                        yesterday,
-                        "%Y-%m-%d %H:%M:%S %Z",
+                    # Calculate Timedelta of Time until Midnight
+                    time_until_midnight = (
+                        self.Get_Tomorrow(
+                            day=self.Get_Today(output_string=False), output_string=False
+                        )
+                        - today
                     )
-                    tomorrow_string = datetime.datetime.strftime(
-                        tomorrow,
-                        "%Y-%m-%d %H:%M:%S %Z",
+                    # Convert into string
+                    time_until_string = await self.Timedelta_To_String(
+                        timedelta=time_until_midnight, include_day=False
                     )
                     # Print times for debugging purposes
                     output = str(
-                        f"Today: {today_string}\nYesterday: {yesterday_string}\nTomorrow: {tomorrow_string}"
+                        f"Today: {today_string}\nTime Until Tomorrow: {time_until_string}"
                     )
                     await message.channel.send(output)
             # If it's not a command check for and record good days
@@ -629,20 +628,24 @@ class Good_Day_Bot(discord.Client):
         # Update the presence to no one is having a good day :^(
         await self.update_presence(user="")
 
-    ### Calculating the uptime
-    async def uptime(self, current_time):
-        # Makes a timedelta
-        uptime_delta = current_time - start_time
-        # Convert it into an int
-        uptime_seconds = int(uptime_delta.total_seconds())
+    ### Convert Timedelta into String
+    async def Timedelta_To_String(self, timedelta, include_day):
+        # Convert to seconds in int
+        time_seconds = int(timedelta.total_seconds())
         # Convert into times with meaning
-        elapsed_days, remainder_days = divmod(uptime_seconds, 86400)
+        elapsed_days, remainder_days = divmod(time_seconds, 86400)
         elapsed_hours, remainder_minutes = divmod(remainder_days, 3600)
         elapsed_minutes, elapsed_seconds = divmod(remainder_minutes, 60)
         # Format into a string
-        elapsed_string = str(
-            f"{elapsed_days} Days, {elapsed_hours} Hours, {elapsed_minutes} Minutes, and {elapsed_seconds} Seconds"
-        )
+        if include_day == True:
+            elapsed_string = str(
+                f"{elapsed_days} Days, {elapsed_hours} Hours, {elapsed_minutes} Minutes, and {elapsed_seconds} Seconds"
+            )
+        else:
+            elapsed_string = str(
+                f"{elapsed_hours} Hours, {elapsed_minutes} Minutes, and {elapsed_seconds} Seconds"
+            )
+        # Returning the string
         return elapsed_string
 
 
