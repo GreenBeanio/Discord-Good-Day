@@ -26,22 +26,17 @@ discord_token = ""  # Variable for discord token
 load_dotenv()
 discord_token = str(os.getenv("DISCORD_TOKEN"))
 time_zone_string = str(os.getenv("TIME_ZONE"))
-using_timezone = False  # Used for noting if a timezone is being used or local
 time_zone = ""  # Used for storing the timezone
-start_time = datetime.datetime  # Used for storing the start time to calculate uptime
+start_time = ""  # Used for storing the start time to calculate uptime
+# If using a specifed timezone
 if time_zone_string != "":
-    using_timezone = True  # Set true if there is a timezone, if not leave false
-    time_zone = zoneinfo.ZoneInfo(
-        time_zone_string
-    )  # Set a timezone if there is one, if not leave as an empty string
-if using_timezone == True:
-    start_time = datetime.datetime.today().astimezone(
-        time_zone
-    )  # Get start time with timezone if using a specific timezone
+    # Setting the time zone to the one from the env file
+    time_zone = zoneinfo.ZoneInfo(time_zone_string)
 else:
-    start_time = (
-        datetime.datetime.today().astimezone()
-    )  # Get start time with local timezone if using a specfic timezone
+    # Setting the time zone to be the local time zone
+    time_zone = datetime.datetime.now().astimezone().tzinfo
+# Get start time using the selected time zone
+start_time = datetime.datetime.today().astimezone(time_zone)
 # Make direcotry if it doesn't exist
 if os.path.exists(directory_path) == False:
     os.mkdir(directory_path)
@@ -562,11 +557,7 @@ class Good_Day_Bot(discord.Client):
     ### Getting Today
     async def Get_Today(self, output_string):
         # Getting Today's Time
-        today = ""
-        if using_timezone == True:
-            today = datetime.datetime.today().astimezone(time_zone)
-        else:
-            today = datetime.datetime.today().astimezone()
+        today = datetime.datetime.today().astimezone(time_zone)
         # Convert to string if output_string is true
         if output_string == True:
             today = datetime.datetime.strftime(
@@ -579,17 +570,10 @@ class Good_Day_Bot(discord.Client):
     ### Getting Yesterday
     async def Get_Yesterday(self, day, output_string):
         # Getting Yesterday
-        yesterday = ""
-        if using_timezone == True:
-            yesterday = day - datetime.timedelta(days=1)
-            yesterday = datetime.datetime.combine(
-                yesterday, datetime.datetime.min.time(), tzinfo=time_zone
-            )
-        else:
-            yesterday = day - datetime.timedelta(days=1)
-            yesterday = datetime.datetime.combine(
-                yesterday, datetime.datetime.min.time()
-            ).astimezone()
+        yesterday = day - datetime.timedelta(days=1)
+        yesterday = datetime.datetime.combine(
+            yesterday, datetime.datetime.min.time(), tzinfo=time_zone
+        )
         # Convert to string if output_string is true
         if output_string == True:
             yesterday = datetime.datetime.strftime(
@@ -602,17 +586,10 @@ class Good_Day_Bot(discord.Client):
     ### Get Tomorrow
     async def Get_Tomorrow(self, day, output_string):
         # Getting Tomorrow
-        tomorrow = ""
-        if using_timezone == True:
-            tomorrow = day + datetime.timedelta(days=1)
-            tomorrow = datetime.datetime.combine(
-                tomorrow.date(), datetime.datetime.min.time(), tzinfo=time_zone
-            )
-        else:
-            tomorrow = day + datetime.timedelta(days=1)
-            tomorrow = datetime.datetime.combine(
-                tomorrow, datetime.datetime.min.time()
-            ).astimezone()
+        tomorrow = day + datetime.timedelta(days=1)
+        tomorrow = datetime.datetime.combine(
+            tomorrow.date(), datetime.datetime.min.time(), tzinfo=time_zone
+        )
         # Convert to string if output_string is true
         if output_string == True:
             tomorrow = datetime.datetime.strftime(
