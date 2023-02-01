@@ -67,7 +67,6 @@ class Good_Day_Bot(discord.Client):
         print(f"{self.user.name} Bot: connected to the server")
         # Getting tomorrows midnight
         tomorrow = self.Get_Midnight()
-        print(tomorrow.tzinfo)
         # Wating until midnight tomorrow to start the loop (if it isn't already running somehow)
         if not self.Daily_Refresh.is_running():
             await discord.utils.sleep_until(tomorrow)
