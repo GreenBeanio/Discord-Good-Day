@@ -13,8 +13,12 @@ I like to say "Good Day" or something along those lines in discord everyday. Thi
     - Return the user's "Good Day" stats.
 - !days @USER
     - Returns the user in the @'s "Good Day" stats.
-- !lead
+- !leaderboard
     - Returns a leaderboard of the server's "Good Day" stats.
+- !uptime
+    - Returns the amount of time that the script has been running.
+- !time
+    - Returns current times being used by the script.
 - !help
     - Lists the commands available.
 

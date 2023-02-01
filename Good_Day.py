@@ -9,7 +9,6 @@ from pathlib import Path
 import datetime
 import zoneinfo
 
-
 # endregion Import Modules
 # region Variables
 good_days = {}  # Used to load and store data about the good days
@@ -28,11 +27,20 @@ discord_token = str(os.getenv("DISCORD_TOKEN"))
 time_zone_string = str(os.getenv("TIME_ZONE"))
 using_timezone = False  # Used for noting if a timezone is being used or local
 time_zone = ""  # Used for storing the timezone
+start_time = datetime.datetime  # Used for storing the start time to calculate uptime
 if time_zone_string != "":
     using_timezone = True  # Set true if there is a timezone, if not leave false
     time_zone = zoneinfo.ZoneInfo(
         time_zone_string
     )  # Set a timezone if there is one, if not leave as an empty string
+if using_timezone == True:
+    start_time = datetime.datetime.today().astimezone(
+        time_zone
+    )  # Get start time with timezone if using a specific timezone
+else:
+    start_time = (
+        datetime.datetime.today().astimezone()
+    )  # Get start time with local timezone if using a specfic timezone
 # Make direcotry if it doesn't exist
 if os.path.exists(directory_path) == False:
     os.mkdir(directory_path)
@@ -136,8 +144,8 @@ class Good_Day_Bot(discord.Client):
                             "\U0001F62D I'm so sorry. They have never had a good day \U0001F62D"
                         )
 
-                # Check the first 5 for the "!lead" command
-                elif message.content[0:5] == "!lead":
+                # Check the first 5 for the "!leaderboard" command
+                elif message.content[0:12] == "!leaderboard":
                     # Initailize the leaderboard if it is empty
                     if len(leader_board) == 0:
                         self.update_leaderboard("")
@@ -172,8 +180,44 @@ class Good_Day_Bot(discord.Client):
                 elif message.content[0:5] == "!help":
                     # Gives instructions
                     await message.channel.send(
-                        'Do "!days" to see your stats\nDo "!days @user" to see their stats\nDo "!lead" to see the leaderboard\nRemember to say "Good Day!',
+                        'Do "!days" to see your stats\nDo "!days @user" to see their stats\nDo "!leaderboard" to see the leaderboard\nDo "!uptime" to see how long the bot has been running\
+                            \nDo "!time" to see times\nDo "!help" to see commands\nRemember to say "Good Day!',
                     )
+                # Check uptime
+                elif message.content[0:7] == "!uptime":
+                    # Get current time
+                    current_time = ""
+                    if using_timezone == True:
+                        current_time = datetime.datetime.today().astimezone(time_zone)
+                    else:
+                        current_time = datetime.datetime.today().astimezone()
+                    elapsed = await self.uptime(current_time)
+                    await message.channel.send(
+                        f"\U0001F607 I have been tracking Good Days for {elapsed}! \U0001F607"
+                    )
+                elif message.content[0:5] == "!time":
+                    # Getting Today's Time
+                    today = ""
+                    yesterday = ""
+                    if using_timezone == True:
+                        today = datetime.datetime.today().astimezone(time_zone)
+                        yesterday_1 = today - datetime.timedelta(days=1)
+                        yesterday = datetime.datetime.combine(
+                            yesterday_1, datetime.datetime.min.time()
+                        ).astimezone(time_zone)
+                        # today_string = datetime.datetime.strftime(today,"%Y-%m-%d",)
+                    else:
+                        today = datetime.datetime.today().astimezone()
+                        yesterday = datetime.datetime.combine(
+                            yesterday_1, datetime.datetime.min.time()
+                        ).astimezone()
+                        # today_string = datetime.datetime.strftime(today, "%Y-%m-%d")
+                    tomorrow = self.Get_Midnight()
+                    # Print times for debugging purposes
+                    print(f"Today: {today} | Today Type: {type(today)}")
+                    print(f"Yesterday: {yesterday} | Yesterday Type: {type(yesterday)}")
+                    print(f"Midnight: {tomorrow} | Midnight Type: {type(tomorrow)}")
+
             # If it's not a command check for and record good days
             elif "day" in str(message.content).lower():
                 if "good" in str(message.content).lower():
@@ -521,12 +565,16 @@ class Good_Day_Bot(discord.Client):
         if using_timezone == True:
             today = datetime.datetime.today().astimezone(time_zone)
             tomorrow = today + datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(tomorrow, datetime.datetime.min.time()).astimezone(time_zone)
+            midnight = datetime.datetime.combine(
+                tomorrow, datetime.datetime.min.time()
+            ).astimezone(time_zone)
 
         else:
             today = datetime.datetime.today().astimezone()
             tomorrow = today + datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(tomorrow, datetime.datetime.min.time()).astimezone()
+            midnight = datetime.datetime.combine(
+                tomorrow, datetime.datetime.min.time()
+            ).astimezone()
         return midnight
 
     ### Daily Refresh to Check Users and Leaderboard every day at midnight
@@ -550,6 +598,22 @@ class Good_Day_Bot(discord.Client):
             self.update_leaderboard(x)
         # Update the presence to no one is having a good day :^(
         await self.update_presence("")
+
+    ### Calculating the uptime
+    async def uptime(self, current_time):
+        # Makes a timedelta
+        uptime_delta = current_time - start_time
+        # Convert it into an int
+        uptime_seconds = int(uptime_delta.total_seconds())
+        # Convert into times with meaning
+        elapsed_days, remainder_days = divmod(uptime_seconds, 86400)
+        elapsed_hours, remainder_minutes = divmod(remainder_days, 3600)
+        elapsed_minutes, elapsed_seconds = divmod(remainder_minutes, 60)
+        # Format into a string
+        elapsed_string = str(
+            f"{elapsed_days} Days, {elapsed_hours} Hours, {elapsed_minutes} Minutes, and {elapsed_seconds} Seconds"
+        )
+        return elapsed_string
 
 
 # Setting the bots intentions
