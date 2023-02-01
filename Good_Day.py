@@ -2,6 +2,7 @@
 # region Import Modules
 import discord
 from discord.ext import tasks
+import asyncio
 import os
 from dotenv import load_dotenv
 import json
@@ -79,8 +80,11 @@ class Good_Day_Bot(discord.Client):
         )
         # Wating until midnight tomorrow to start the loop (if it isn't already running somehow)
         if not self.Daily_Refresh.is_running():
-            await discord.utils.sleep_until(tomorrow)
-            # Start a rerfresh loop
+            # Getting time until midnight
+            time_until_midnight = await self.Time_Until_Midnight()
+            # Waiting until midnight
+            await asyncio.sleep(time_until_midnight.total_seconds())
+            # Start a refresh loop
             await self.Daily_Refresh.start()
 
     # When someone sends a message in the server
@@ -192,25 +196,18 @@ class Good_Day_Bot(discord.Client):
                     )
                 # Getting times for debug purposes
                 elif message.content[0:5] == "!time":
-                    # Getting Times in Data Time
-                    today = self.Get_Today(output_string=False)
                     # Converting today into a string (Doing this separately for timezone)
                     today_string = datetime.datetime.strftime(
-                        today,
+                        self.Get_Today(output_string=False),
                         "%Y-%m-%d %H:%M:%S %Z",
                     )
-                    # Calculate Timedelta of Time until Midnight
-                    time_until_midnight = (
-                        self.Get_Tomorrow(
-                            day=self.Get_Today(output_string=False), output_string=False
-                        )
-                        - today
-                    )
+                    # Getting time until Midnight
+                    time_until_midnight = await self.Time_Until_Midnight()
                     # Convert into string
                     time_until_string = await self.Timedelta_To_String(
                         timedelta=time_until_midnight, include_day=False
                     )
-                    # Print times for debugging purposes
+                    # Message times for debugging purposes
                     output = str(
                         f"Today: {today_string}\nTime Until Tomorrow: {time_until_string}"
                     )
@@ -618,11 +615,13 @@ class Good_Day_Bot(discord.Client):
     ### Daily Refresh to Check Users and Leaderboard every day at midnight
     @tasks.loop(hours=24)
     async def Daily_Refresh(self):
+        print("example")
         # Update all users and the leaderboard
         for x in good_days:
             # Update the users stats
-            today_string = self.Get_Today(output_string=True)
-            self.Update_Stats(user=str(x), day=str(today_string), update=False)
+            self.Update_Stats(
+                user=str(x), day=self.Get_Today(output_string=False), update=False
+            )
             # Updating the leaderboard
             self.update_leaderboard(user=x)
         # Update the presence to no one is having a good day :^(
@@ -647,6 +646,14 @@ class Good_Day_Bot(discord.Client):
             )
         # Returning the string
         return elapsed_string
+
+    ### Calculate Time Until Midnight
+    async def Time_Until_Midnight(self):
+        # Calculate Timedelta of Time until Midnight
+        time_until_midnight = self.Get_Tomorrow(
+            day=self.Get_Today(output_string=False), output_string=False
+        ) - self.Get_Today(output_string=False)
+        return time_until_midnight
 
 
 # Setting the bots intentions
