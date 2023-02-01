@@ -201,7 +201,7 @@ class Good_Day_Bot(discord.Client):
             )
         else:
             activity = discord.Game(
-                name=f"\U0001F629 Nobody Is Having A Good Day \U0001F62D"
+                name=f"\U0001F62D Nobody Is Having A Good Day \U0001F62D"
             )
         await self.change_presence(activity=activity)
 
