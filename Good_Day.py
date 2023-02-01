@@ -74,7 +74,9 @@ class Good_Day_Bot(discord.Client):
         # Printing a log message
         print(f"{self.user.name} Bot: connected to the server")
         # Getting tomorrows midnight
-        tomorrow = self.Get_Midnight()
+        tomorrow = self.Get_Tomorrow(
+            day=self.Get_Today(output_string=False), output_string=False
+        )
         # Wating until midnight tomorrow to start the loop (if it isn't already running somehow)
         if not self.Daily_Refresh.is_running():
             await discord.utils.sleep_until(tomorrow)
@@ -115,17 +117,11 @@ class Good_Day_Bot(discord.Client):
                     # If they have had a good day
                     if str(user) in good_days:
                         # Updating the streak, just in case they haven't been having good days and updating it
-                        today_string = ""
-                        if using_timezone == True:
-                            today = datetime.datetime.today().astimezone(time_zone)
-                            today_string = datetime.datetime.strftime(
-                                today,
-                                "%Y-%m-%d",
-                            )
-                        else:
-                            today = datetime.datetime.today().astimezone()
-                            today_string = datetime.datetime.strftime(today, "%Y-%m-%d")
-                        self.Update_Stats(str(user), str(today_string), False)
+                        self.Update_Stats(
+                            user=str(user),
+                            day=self.Get_Today(output_string=False),
+                            update=False,
+                        )
                         # Writing the information
                         day_number = good_days[user]["Stats"]["Good Days"]
                         last_day = good_days[user]["Stats"]["Last Good Day"]
@@ -148,7 +144,7 @@ class Good_Day_Bot(discord.Client):
                 elif message.content[0:12] == "!leaderboard":
                     # Initailize the leaderboard if it is empty
                     if len(leader_board) == 0:
-                        self.update_leaderboard("")
+                        self.update_leaderboard(user="")
                     # Getting the message text
                     message_text = ""  # Used for storing the result
                     for x in leader_board:
@@ -181,60 +177,53 @@ class Good_Day_Bot(discord.Client):
                     # Gives instructions
                     await message.channel.send(
                         'Do "!days" to see your stats\nDo "!days @user" to see their stats\nDo "!leaderboard" to see the leaderboard\nDo "!uptime" to see how long the bot has been running\
-                            \nDo "!time" to see times\nDo "!help" to see commands\nRemember to say "Good Day!',
+                            \nDo "!time" to see times\nDo "!help" to see commands\nRemember to say "Good Day!"',
                     )
                 # Check uptime
                 elif message.content[0:7] == "!uptime":
-                    # Get current time
-                    current_time = ""
-                    if using_timezone == True:
-                        current_time = datetime.datetime.today().astimezone(time_zone)
-                    else:
-                        current_time = datetime.datetime.today().astimezone()
-                    elapsed = await self.uptime(current_time)
+                    # Get elapsed time
+                    elapsed = await self.uptime(
+                        current_time=self.Get_Today(output_string=False)
+                    )
                     await message.channel.send(
                         f"\U0001F607 I have been tracking Good Days for {elapsed}! \U0001F607"
                     )
+                # Getting times for debug purposes
                 elif message.content[0:5] == "!time":
-                    # Getting Today's Time
-                    today = ""
-                    yesterday = ""
-                    if using_timezone == True:
-                        today = datetime.datetime.today().astimezone(time_zone)
-                        yesterday_1 = today - datetime.timedelta(days=1)
-                        yesterday = datetime.datetime.combine(
-                            yesterday_1, datetime.datetime.min.time()
-                        ).astimezone(time_zone)
-                        # today_string = datetime.datetime.strftime(today,"%Y-%m-%d",)
-                    else:
-                        today = datetime.datetime.today().astimezone()
-                        yesterday = datetime.datetime.combine(
-                            yesterday_1, datetime.datetime.min.time()
-                        ).astimezone()
-                        # today_string = datetime.datetime.strftime(today, "%Y-%m-%d")
-                    tomorrow = self.Get_Midnight()
+                    # Getting Times in Data Time
+                    today = self.Get_Today(output_string=False)
+                    yesterday = self.Get_Yesterday(
+                        day=self.Get_Today(output_string=False), output_string=False
+                    )
+                    tomorrow = self.Get_Tomorrow(
+                        day=self.Get_Today(output_string=False), output_string=False
+                    )
+                    # Converting into strings (Have to do this separately for timezone)
+                    today_string = datetime.datetime.strftime(
+                        today,
+                        "%Y-%m-%d %H:%M:%S %Z",
+                    )
+                    yesterday_string = datetime.datetime.strftime(
+                        yesterday,
+                        "%Y-%m-%d %H:%M:%S %Z",
+                    )
+                    tomorrow_string = datetime.datetime.strftime(
+                        tomorrow,
+                        "%Y-%m-%d %H:%M:%S %Z",
+                    )
                     # Print times for debugging purposes
-                    print(f"Today: {today} | Today Type: {type(today)}")
-                    print(f"Yesterday: {yesterday} | Yesterday Type: {type(yesterday)}")
-                    print(f"Midnight: {tomorrow} | Midnight Type: {type(tomorrow)}")
-
+                    output = str(
+                        f"Today: {today_string}\nYesterday: {yesterday_string}\nTomorrow: {tomorrow_string}"
+                    )
+                    await message.channel.send(output)
             # If it's not a command check for and record good days
             elif "day" in str(message.content).lower():
                 if "good" in str(message.content).lower():
                     # Update the activity for the user having a good day, even if they already did it today
-                    await self.update_presence(message.author.name)
+                    await self.update_presence(user=message.author.name)
                     # Update the data on their good day status
-                    today_string = ""
-                    if using_timezone == True:
-                        today = datetime.datetime.today().astimezone(time_zone)
-                        today_string = datetime.datetime.strftime(
-                            today,
-                            "%Y-%m-%d",
-                        )
-                    else:
-                        today = datetime.datetime.today().astimezone()
-                        today_string = datetime.datetime.strftime(today, "%Y-%m-%d")
-                    self.Check_User_Days(str(message.author.id), str(today_string))
+                    today = self.Get_Today(output_string=False)
+                    self.Check_User_Days(user=str(message.author.id), day=today)
 
     # Updates who is having a good day
     async def update_presence(self, user=""):
@@ -253,38 +242,43 @@ class Good_Day_Bot(discord.Client):
     def Check_User_Days(self, user, day):
         # Have to have good_days be global
         global good_days
+        # Get today as a string (instead of calling the function again)
+        day_string = datetime.datetime.strftime(
+            day,
+            "%Y-%m-%d",
+        )
         # If the user already has had good days
         if user in good_days:
             # If today hasn't already been coutned as a good day
-            if day not in good_days[user]["Days"].values():
+            if day_string not in good_days[user]["Days"].values():
                 # Get how many days they've done
                 had_days = len(good_days[user]["Days"])
                 # Add the new day
-                good_days[user]["Days"][f"Day {had_days+1}"] = day
+                good_days[user]["Days"][f"Day {had_days+1}"] = day_string
                 # Add to their stats
-                self.Update_Stats(user, day, True)
+                self.Update_Stats(user=user, day=day, update=True)
         # If the user is new
         else:
             # Add the new user, day, and empty data
             good_days[user] = {
-                "Stats": {"Good Days": 0, "Last Good Day": day},
+                "Stats": {"Good Days": 0, "Last Good Day": day_string},
                 "Streaks": {"Top Streak": 0, "Current Streak": 0},
-                "Days": {"Day 1": day},
+                "Days": {"Day 1": day_string},
             }
             # Add to their stats
-            self.Update_Stats(user, day, True)
+            self.Update_Stats(user=user, day=day, update=True)
 
     ### Check the users stats
     def Update_Stats(self, user, day, update):
         # Have to have good_days be global
         global good_days
-        # Getting yesterdays date
+        # Getting last good day
         last_good_day = good_days[user]["Stats"]["Last Good Day"]
-        yesterday = datetime.datetime.strptime(day, "%Y-%m-%d") - datetime.timedelta(
-            days=1
-        )
-        yesterday_string = datetime.datetime.strftime(
-            yesterday,
+        # Getting yesterdays date
+        yesterday_string = self.Get_Yesterday(day=day, output_string=True)
+        # Get today as a string (instead of calling the function again)
+        day_string = datetime.datetime.strftime(
+            day,
             "%Y-%m-%d",
         )
         # If a good day has been done and need updated
@@ -301,17 +295,17 @@ class Good_Day_Bot(discord.Client):
                     good_days[user]["Streaks"]["Top Streak"] += 1
             # Checking if a streak was lost
             # If the last good day isn't today or yesterday (they haven't said good day yet) then they lose their streak
-            elif last_good_day != day and last_good_day != str(yesterday_string):
+            elif last_good_day != day_string and last_good_day != str(yesterday_string):
                 good_days[user]["Streaks"]["Current Streak"] = 0
             # Updating days
             good_days[user]["Stats"]["Good Days"] += 1
-            good_days[user]["Stats"]["Last Good Day"] = day
+            good_days[user]["Stats"]["Last Good Day"] = day_string
             # Update the leaderboard
-            self.update_leaderboard(user)
+            self.update_leaderboard(user=user)
         # If just checking if the current streak is accurate
         else:
             # Checking if a streak was lost
-            if last_good_day != day and last_good_day != str(yesterday_string):
+            if last_good_day != day_string and last_good_day != str(yesterday_string):
                 # The streak was lost
                 good_days[user]["Streaks"]["Current Streak"] = 0
         # Saving json
@@ -559,23 +553,68 @@ class Good_Day_Bot(discord.Client):
         with open(leaderboard_file_path, "w") as outputfile:
             json.dump(leader_board, outputfile, sort_keys=False, indent=4)
 
-    ### Get Next Midnight
-    def Get_Midnight(self):
-        midnight = ""
+    ### Getting Today
+    def Get_Today(self, output_string):
+        # Getting Today's Time
+        today = ""
         if using_timezone == True:
             today = datetime.datetime.today().astimezone(time_zone)
-            tomorrow = today + datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(
-                tomorrow, datetime.datetime.min.time()
-            ).astimezone(time_zone)
-
         else:
             today = datetime.datetime.today().astimezone()
-            tomorrow = today + datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(
+        # Convert to string if output_string is true
+        if output_string == True:
+            today = datetime.datetime.strftime(
+                today,
+                "%Y-%m-%d",
+            )
+        # Return Today
+        return today
+
+    ### Getting Yesterday
+    def Get_Yesterday(self, day, output_string):
+        # Getting Yesterday
+        yesterday = ""
+        if using_timezone == True:
+            yesterday = day - datetime.timedelta(days=1)
+            yesterday = datetime.datetime.combine(
+                yesterday, datetime.datetime.min.time()
+            ).astimezone(time_zone)
+        else:
+            yesterday = day - datetime.timedelta(days=1)
+            yesterday = datetime.datetime.combine(
+                yesterday, datetime.datetime.min.time()
+            ).astimezone()
+        # Convert to string if output_string is true
+        if output_string == True:
+            yesterday = datetime.datetime.strftime(
+                yesterday,
+                "%Y-%m-%d",
+            )
+        # Return Yesterday
+        return yesterday
+
+    ### Get Tomorrow
+    def Get_Tomorrow(self, day, output_string):
+        # Getting Tomorrow
+        tomorrow = ""
+        if using_timezone == True:
+            tomorrow = day + datetime.timedelta(days=1)
+            tomorrow = datetime.datetime.combine(
+                tomorrow, datetime.datetime.min.time()
+            ).astimezone(time_zone)
+        else:
+            tomorrow = day + datetime.timedelta(days=1)
+            tomorrow = datetime.datetime.combine(
                 tomorrow, datetime.datetime.min.time()
             ).astimezone()
-        return midnight
+        # Convert to string if output_string is true
+        if output_string == True:
+            tomorrow = datetime.datetime.strftime(
+                tomorrow,
+                "%Y-%m-%d",
+            )
+        # Return Tomorrow
+        return tomorrow
 
     ### Daily Refresh to Check Users and Leaderboard every day at midnight
     @tasks.loop(hours=24)
@@ -583,21 +622,12 @@ class Good_Day_Bot(discord.Client):
         # Update all users and the leaderboard
         for x in good_days:
             # Update the users stats
-            today_string = ""
-            if using_timezone == True:
-                today = datetime.datetime.today().astimezone(time_zone)
-                today_string = datetime.datetime.strftime(
-                    today,
-                    "%Y-%m-%d",
-                )
-            else:
-                today = datetime.datetime.today().astimezone()
-                today_string = datetime.datetime.strftime(today, "%Y-%m-%d")
-            self.Update_Stats(str(x), str(today_string), False)
+            today_string = self.Get_Today(output_string=True)
+            self.Update_Stats(user=str(x), day=str(today_string), update=False)
             # Updating the leaderboard
-            self.update_leaderboard(x)
+            self.update_leaderboard(user=x)
         # Update the presence to no one is having a good day :^(
-        await self.update_presence("")
+        await self.update_presence(user="")
 
     ### Calculating the uptime
     async def uptime(self, current_time):
