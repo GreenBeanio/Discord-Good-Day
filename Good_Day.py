@@ -420,8 +420,11 @@ class Good_Day_Bot(discord.Client):
                             ) and good_day_stats[y] > int(
                                 leader_board[y]["Third Place"][y]
                             ):
-                                # If second place isn't them then set them to third place
-                                if leader_board[y]["Second Place"]["User"] != user:
+                                # If second place and first place isn't them then set them to third place
+                                if (
+                                    leader_board[y]["Second Place"]["User"] != user
+                                    and leader_board[y]["First Place"]["User"] != user
+                                ):
                                     leader_board[y]["Third Place"] = {
                                         "User": z,
                                         y: good_day_stats[y],
@@ -456,8 +459,11 @@ class Good_Day_Bot(discord.Client):
                             ) and good_day_stats[y] > int(
                                 leader_board[y]["Third Place"][y]
                             ):
-                                # If second place isn't them then set them to third place
-                                if leader_board[y]["Second Place"]["User"] != user:
+                                # If second place and first place isn't them then set them to third place
+                                if (
+                                    leader_board[y]["Second Place"]["User"] != user
+                                    and leader_board[y]["First Place"]["User"] != user
+                                ):
                                     leader_board[y]["Third Place"] = {
                                         "User": z,
                                         y: good_day_stats[y],
@@ -486,8 +492,11 @@ class Good_Day_Bot(discord.Client):
                         ) and good_day_stats[y] > int(
                             leader_board[y]["Third Place"][y]
                         ):
-                            # If second place isn't them then set them to third place
-                            if leader_board[y]["Second Place"]["User"] != user:
+                            # If second place and first place isn't them then set them to third place
+                            if (
+                                leader_board[y]["Second Place"]["User"] != user
+                                and leader_board[y]["First Place"]["User"] != user
+                            ):
                                 leader_board[y]["Third Place"] = {
                                     "User": z,
                                     y: good_day_stats[y],
@@ -515,18 +524,19 @@ class Good_Day_Bot(discord.Client):
                         }
                 # If the user is higher than the second place replace it and move the old second place down to third place
                 elif user_stats[y] > int(leader_board[y]["Second Place"][y]):
-                    # If you aren't breaking your own highscore add yourself & you aren't in first place (Prevents double placement)
-                    if (
-                        leader_board[y]["Second Place"]["User"] != user
-                        and leader_board[y]["First Place"]["User"] != user
-                    ):
-                        # Move second place to third
-                        leader_board[y]["Third Place"] = leader_board[y]["Second Place"]
-                        # Move to second place
-                        leader_board[y]["Second Place"] = {
-                            "User": user,
-                            y: user_stats[y],
-                        }
+                    # If you aren't breaking your own highscore
+                    if leader_board[y]["Second Place"]["User"] != user:
+                        # If you aren't in first place add yourself (Prevents double placement)
+                        if leader_board[y]["First Place"]["User"] != user:
+                            # Move second place to third
+                            leader_board[y]["Third Place"] = leader_board[y][
+                                "Second Place"
+                            ]
+                            # Move to second place
+                            leader_board[y]["Second Place"] = {
+                                "User": user,
+                                y: user_stats[y],
+                            }
                     # If you are breaking your own highscore then update only yourself
                     else:
                         leader_board[y]["Second Place"] = {
