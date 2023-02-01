@@ -663,10 +663,12 @@ class Good_Day_Bot(discord.Client):
 
     ### Calculate Time Until Midnight
     async def Time_Until_Midnight(self):
+        # Get today
+        today = await self.Get_Today(output_string=False)
         # Calculate Timedelta of Time until Midnight
-        time_until_midnight = await self.Get_Tomorrow(
-            day=await self.Get_Today(output_string=False), output_string=False
-        ) - await self.Get_Today(output_string=False)
+        time_until_midnight = (
+            await self.Get_Tomorrow(today, output_string=False) - today
+        )
         return time_until_midnight
 
 
