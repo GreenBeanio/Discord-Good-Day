@@ -67,6 +67,7 @@ class Good_Day_Bot(discord.Client):
         print(f"{self.user.name} Bot: connected to the server")
         # Getting tomorrows midnight
         tomorrow = self.Get_Midnight()
+        print(tomorrow.tzinfo)
         # Wating until midnight tomorrow to start the loop (if it isn't already running somehow)
         if not self.Daily_Refresh.is_running():
             await discord.utils.sleep_until(tomorrow)
@@ -521,12 +522,12 @@ class Good_Day_Bot(discord.Client):
         if using_timezone == True:
             today = datetime.datetime.today().astimezone(time_zone)
             tomorrow = today + datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(tomorrow, datetime.datetime.min.time())
+            midnight = datetime.datetime.combine(tomorrow, datetime.datetime.min.time()).astimezone(time_zone)
 
         else:
             today = datetime.datetime.today().astimezone()
             tomorrow = today + datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(tomorrow, datetime.datetime.min.time())
+            midnight = datetime.datetime.combine(tomorrow, datetime.datetime.min.time()).astimezone()
         return midnight
 
     ### Daily Refresh to Check Users and Leaderboard every day at midnight
