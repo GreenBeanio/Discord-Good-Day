@@ -465,37 +465,40 @@ class Good_Day_Bot(discord.Client):
                                     }
                 # If the user is in third place already
                 if leader_board[y]["Third Place"]["User"] == user:
-                    # Getting third place
-                    # Set third place to empty to start
-                    leader_board[y]["Third Place"] = {
-                        "User": "Empty",
-                        y: "0",
-                    }
-                    # Look through every user
-                    for z in good_days:
-                        # Getting their score
-                        good_day_stats = {
-                            "Good Days": int(good_days[z]["Stats"]["Good Days"]),
-                            "Top Streak": int(good_days[z]["Streaks"]["Top Streak"]),
-                            "Current Streak": int(
-                                good_days[z]["Streaks"]["Current Streak"]
-                            ),
+                    # If their current score is less than the score on the board remove them
+                    if user_stats[y] < int(leader_board[y]["Third Place"][y]):
+                        # Set third place to empty to start
+                        leader_board[y]["Third Place"] = {
+                            "User": "Empty",
+                            y: "0",
                         }
-                        # Checking if their score is below or equal to second place and their score is higher than third place
-                        if good_day_stats[y] <= int(
-                            leader_board[y]["Second Place"][y]
-                        ) and good_day_stats[y] > int(
-                            leader_board[y]["Third Place"][y]
-                        ):
-                            # If second place and first place isn't them then set them to third place
-                            if (
-                                leader_board[y]["Second Place"]["User"] != user
-                                and leader_board[y]["First Place"]["User"] != user
+                        # Look through every user
+                        for z in good_days:
+                            # Getting their score
+                            good_day_stats = {
+                                "Good Days": int(good_days[z]["Stats"]["Good Days"]),
+                                "Top Streak": int(
+                                    good_days[z]["Streaks"]["Top Streak"]
+                                ),
+                                "Current Streak": int(
+                                    good_days[z]["Streaks"]["Current Streak"]
+                                ),
+                            }
+                            # Checking if their score is below or equal to second place and their score is higher than third place
+                            if good_day_stats[y] <= int(
+                                leader_board[y]["Second Place"][y]
+                            ) and good_day_stats[y] > int(
+                                leader_board[y]["Third Place"][y]
                             ):
-                                leader_board[y]["Third Place"] = {
-                                    "User": z,
-                                    y: good_day_stats[y],
-                                }
+                                # If second place and first place isn't them then set them to third place
+                                if (
+                                    leader_board[y]["Second Place"]["User"] != user
+                                    and leader_board[y]["First Place"]["User"] != user
+                                ):
+                                    leader_board[y]["Third Place"] = {
+                                        "User": z,
+                                        y: good_day_stats[y],
+                                    }
                 # endregion Prevent Double Pleacement
                 # region Progress Leaderboard
                 # If the user is higher than the first place replace it and move the old first place down to second place
