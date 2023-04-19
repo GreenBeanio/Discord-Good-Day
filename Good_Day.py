@@ -22,7 +22,7 @@ leaderboard_file_path = directory_path + "leaderboard.json"  # Path to the leade
 discord_token = ""  # Variable for discord token
 # endregion Variables
 # region Initializing
-# Load envrionment variables
+# Load environment variables
 load_dotenv()
 discord_token = str(os.getenv("DISCORD_TOKEN"))
 time_zone_string = str(os.getenv("TIME_ZONE"))
@@ -37,7 +37,7 @@ else:
     time_zone = datetime.datetime.now().astimezone().tzinfo
 # Get start time using the selected time zone
 start_time = datetime.datetime.today().astimezone(time_zone)
-# Make direcotry if it doesn't exist
+# Make directory if it doesn't exist
 if os.path.exists(directory_path) == False:
     os.mkdir(directory_path)
 # Make user file if it doesn't exist
@@ -240,7 +240,7 @@ class Good_Day_Bot(discord.Client):
         )
         # If the user already has had good days
         if user in good_days:
-            # If today hasn't already been coutned as a good day
+            # If today hasn't already been counted as a good day (could maybe use just the last value [-1])
             if day_string not in good_days[user]["Days"].values():
                 # Get how many days they've done
                 had_days = len(good_days[user]["Days"])
@@ -277,7 +277,7 @@ class Good_Day_Bot(discord.Client):
             # Update the Streaks
             # If today was right after the last good day then increase the streak
             if last_good_day == str(yesterday_string):
-                # Increasign the streak
+                # Increasing the streak
                 good_days[user]["Streaks"]["Current Streak"] += 1
                 # Check if it's their new top streak
                 if int(good_days[user]["Streaks"]["Current Streak"]) > int(
@@ -303,6 +303,122 @@ class Good_Day_Bot(discord.Client):
         with open(user_file_path, "w") as outputfile:
             json.dump(good_days, outputfile, sort_keys=False, indent=4)
 
+    ### Check for an update leaderboard scores
+    async def Check_Scores(self, user, user_stats, place, activity, mode):
+        # Have to have leader_board be global
+        global leader_board
+        # If first place
+        if place == "First":
+            # If breaking your own score
+            if mode == "Own":
+                # Replace yourself in first place
+                leader_board[activity]["First Place"] = {
+                    "User": user,
+                    activity: user_stats[activity],
+                }
+            # If breaking someone else's score
+            elif mode == "Other":
+                # Move second place to third
+                leader_board[activity]["Third Place"] = leader_board[activity][
+                    "Second Place"
+                ]
+                # Move first place to second
+                leader_board[activity]["Second Place"] = leader_board[activity][
+                    "First Place"
+                ]
+                # Move to to first place
+                leader_board[activity]["First Place"] = {
+                    "User": user,
+                    activity: user_stats[activity],
+                }
+            # If you lost your own score
+            elif mode == "Lost":
+                # Move second place to first
+                leader_board[activity]["First Place"] = leader_board[activity][
+                    "Second Place"
+                ]
+                # Move third place to second place
+                leader_board[activity]["Second Place"] = leader_board[activity][
+                    "Third Place"
+                ]
+                # Get a new third place
+                await self.Check_Scores("N/A", "N/A", "New Third", activity, "N/A")
+        elif place == "Second":
+            # If breaking your own score
+            if mode == "Own":
+                # Replace yourself in second place
+                leader_board[activity]["Second Place"] = {
+                    "User": user,
+                    activity: user_stats[activity],
+                }
+            # If breaking someone else's score
+            elif mode == "Other":
+                # Move second place to third
+                leader_board[activity]["Third Place"] = leader_board[activity][
+                    "Second Place"
+                ]
+                # Move to to second place
+                leader_board[activity]["Second Place"] = {
+                    "User": user,
+                    activity: user_stats[activity],
+                }
+            # If you lost your own score
+            elif mode == "Lost":
+                # Move third place to second place
+                leader_board[activity]["Second Place"] = leader_board[activity][
+                    "Third Place"
+                ]
+                # Get a new third place
+                await self.Check_Scores("N/A", "N/A", "New Third", activity, "N/A")
+        elif place == "Third":
+            # If breaking your own score
+            if mode == "Own":
+                # Replace yourself in third place
+                leader_board[activity]["Third Place"] = {
+                    "User": user,
+                    activity: user_stats[activity],
+                }
+            # If breaking someone else's score
+            elif mode == "Other":
+                # Move to to third place
+                leader_board[activity]["Third Place"] = {
+                    "User": user,
+                    activity: user_stats[activity],
+                }
+            # If you lost your own score
+            elif mode == "Lost":
+                # Get a new third place
+                await self.Check_Scores("N/A", "N/A", "New Third", activity, "N/A")
+        elif place == "New Third":
+            # Set third place to empty to start
+            leader_board[activity]["Third Place"] = {
+                "User": "Empty",
+                activity: "0",
+            }
+            # Look through every user
+            for z in good_days:
+                # If z (current user) isn't on the score board
+                if (
+                    leader_board[activity]["Second Place"]["User"] != z
+                    and leader_board[activity]["First Place"]["User"] != z
+                ):
+                    # Getting their score
+                    good_day_stats = {
+                        "Good Days": int(good_days[z]["Stats"]["Good Days"]),
+                        "Top Streak": int(good_days[z]["Streaks"]["Top Streak"]),
+                        "Current Streak": int(
+                            good_days[z]["Streaks"]["Current Streak"]
+                        ),
+                    }
+                    # If it is larger than the current third palce
+                    if good_day_stats[activity] > int(
+                        leader_board[activity]["Third Place"][activity]
+                    ):
+                        leader_board[activity]["Third Place"] = {
+                            "User": z,
+                            activity: good_day_stats[activity],
+                        }
+
     ### Check the leaderboard
     async def update_leaderboard(self, user):
         # Have to have leader_board be global
@@ -325,7 +441,7 @@ class Good_Day_Bot(discord.Client):
                 "Second Place": {"User": "Empty", "Current Streak": "0"},
                 "Third Place": {"User": "Empty", "Current Streak": "0"},
             }
-            # initialize the leaderboard if their are users in the list if not then leave as is
+            # initialize the leaderboard if there are users in the list if not then leave as is
             if len(good_days) != 0:
                 # For every user check their stats
                 for x in good_days:
@@ -374,7 +490,7 @@ class Good_Day_Bot(discord.Client):
                             }
         # If the leaderboard exists then check it with the user name as long as the user name wasn't empty
         elif user != "":
-            # Getting the variables
+            # Getting the user scores
             user_stats = {
                 "Good Days": int(good_days[user]["Stats"]["Good Days"]),
                 "Top Streak": int(good_days[user]["Streaks"]["Top Streak"]),
@@ -382,177 +498,49 @@ class Good_Day_Bot(discord.Client):
             }
             # Checking leaderboards in each category
             for y in ["Good Days", "Top Streak", "Current Streak"]:
-                # region Prevent Double Pleacement (Very convoluted)
-                # If the user is in first place already
+                # region Check for score loss
+                # If the user was in first place, but lost their score
                 if leader_board[y]["First Place"]["User"] == user:
                     # If there current score is less than the score on the board, remove them
                     if user_stats[y] < int(leader_board[y]["First Place"][y]):
-                        # Move second place to first
-                        leader_board[y]["First Place"] = leader_board[y]["Second Place"]
-                        # Move third place to second
-                        leader_board[y]["Second Place"] = leader_board[y]["Third Place"]
-                        # Getting third place
-                        # Set third place to empty to start
-                        leader_board[y]["Third Place"] = {
-                            "User": "Empty",
-                            y: "0",
-                        }
-                        # Look through every user
-                        for z in good_days:
-                            # Getting their score
-                            good_day_stats = {
-                                "Good Days": int(good_days[z]["Stats"]["Good Days"]),
-                                "Top Streak": int(
-                                    good_days[z]["Streaks"]["Top Streak"]
-                                ),
-                                "Current Streak": int(
-                                    good_days[z]["Streaks"]["Current Streak"]
-                                ),
-                            }
-                            # Checking if their score is below or equal to second place and their score is higher than third place
-                            if good_day_stats[y] <= int(
-                                leader_board[y]["Second Place"][y]
-                            ) and good_day_stats[y] > int(
-                                leader_board[y]["Third Place"][y]
-                            ):
-                                # If second place and first place isn't them then set them to third place
-                                if (
-                                    leader_board[y]["Second Place"]["User"] != user
-                                    and leader_board[y]["First Place"]["User"] != user
-                                ):
-                                    leader_board[y]["Third Place"] = {
-                                        "User": z,
-                                        y: good_day_stats[y],
-                                    }
-                # If the user is in second place already
+                        await self.Check_Scores("N/A", "N/A", "First", y, "Lost")
+                # If the user was in second place, but lost their score
                 if leader_board[y]["Second Place"]["User"] == user:
                     # If there current score is less than the score on the board, remove them
                     if user_stats[y] < int(leader_board[y]["Second Place"][y]):
-                        # Move third place to second
-                        leader_board[y]["Second Place"] = leader_board[y]["Third Place"]
-                        # Getting third place
-                        # Set third place to empty to start
-                        leader_board[y]["Third Place"] = {
-                            "User": "Empty",
-                            y: "0",
-                        }
-                        # Look through every user
-                        for z in good_days:
-                            # Getting their score
-                            good_day_stats = {
-                                "Good Days": int(good_days[z]["Stats"]["Good Days"]),
-                                "Top Streak": int(
-                                    good_days[z]["Streaks"]["Top Streak"]
-                                ),
-                                "Current Streak": int(
-                                    good_days[z]["Streaks"]["Current Streak"]
-                                ),
-                            }
-                            # Checking if their score is below or equal to second place and their score is higher than third place
-                            if good_day_stats[y] <= int(
-                                leader_board[y]["Second Place"][y]
-                            ) and good_day_stats[y] > int(
-                                leader_board[y]["Third Place"][y]
-                            ):
-                                # If second place and first place isn't them then set them to third place
-                                if (
-                                    leader_board[y]["Second Place"]["User"] != user
-                                    and leader_board[y]["First Place"]["User"] != user
-                                ):
-                                    leader_board[y]["Third Place"] = {
-                                        "User": z,
-                                        y: good_day_stats[y],
-                                    }
-                # If the user is in third place already
+                        await self.Check_Scores("N/A", "N/A", "Second", y, "Lost")
+                # If the user was in third place, but lost their score
                 if leader_board[y]["Third Place"]["User"] == user:
-                    # If their current score is less than the score on the board remove them
+                    # If there current score is less than the score on the board, remove them
                     if user_stats[y] < int(leader_board[y]["Third Place"][y]):
-                        # Set third place to empty to start
-                        leader_board[y]["Third Place"] = {
-                            "User": "Empty",
-                            y: "0",
-                        }
-                        # Look through every user
-                        for z in good_days:
-                            # Getting their score
-                            good_day_stats = {
-                                "Good Days": int(good_days[z]["Stats"]["Good Days"]),
-                                "Top Streak": int(
-                                    good_days[z]["Streaks"]["Top Streak"]
-                                ),
-                                "Current Streak": int(
-                                    good_days[z]["Streaks"]["Current Streak"]
-                                ),
-                            }
-                            # Checking if their score is below or equal to second place and their score is higher than third place
-                            if good_day_stats[y] <= int(
-                                leader_board[y]["Second Place"][y]
-                            ) and good_day_stats[y] > int(
-                                leader_board[y]["Third Place"][y]
-                            ):
-                                # If second place and first place isn't them then set them to third place
-                                if (
-                                    leader_board[y]["Second Place"]["User"] != user
-                                    and leader_board[y]["First Place"]["User"] != user
-                                ):
-                                    leader_board[y]["Third Place"] = {
-                                        "User": z,
-                                        y: good_day_stats[y],
-                                    }
-                # endregion Prevent Double Pleacement
-                # region Progress Leaderboard
-                # If the user is higher than the first place replace it and move the old first place down to second place
-                if user_stats[y] > int(leader_board[y]["First Place"][y]):
-                    # If you aren't breaking your own highscore add yourself
-                    if leader_board[y]["First Place"]["User"] != user:
-                        # Move second place to third
-                        leader_board[y]["Third Place"] = leader_board[y]["Second Place"]
-                        # Move first place to second
-                        leader_board[y]["Second Place"] = leader_board[y]["First Place"]
-                        # Move to to first place
-                        leader_board[y]["First Place"] = {
-                            "User": user,
-                            y: user_stats[y],
-                        }
-                    # If you are breaking your own highscore then update only yourself
-                    else:
-                        leader_board[y]["First Place"] = {
-                            "User": user,
-                            y: user_stats[y],
-                        }
-                # If the user is higher than the second place replace it and move the old second place down to third place
-                elif user_stats[y] > int(leader_board[y]["Second Place"][y]):
-                    # If you aren't breaking your own highscore
-                    if leader_board[y]["Second Place"]["User"] != user:
-                        # If you aren't in first place add yourself (Prevents double placement)
-                        if leader_board[y]["First Place"]["User"] != user:
-                            # Move second place to third
-                            leader_board[y]["Third Place"] = leader_board[y][
-                                "Second Place"
-                            ]
-                            # Move to second place
-                            leader_board[y]["Second Place"] = {
-                                "User": user,
-                                y: user_stats[y],
-                            }
-                    # If you are breaking your own highscore then update only yourself
-                    else:
-                        leader_board[y]["Second Place"] = {
-                            "User": user,
-                            y: user_stats[y],
-                        }
-                # If the user is higher than the third place replace it and boot the old second place from the leaderboard
-                elif user_stats[y] > int(leader_board[y]["Third Place"][y]):
-                    # Move to third place if you aren't in first or second place (Prevents double placement)
-                    if (
-                        leader_board[y]["Second Place"]["User"] != user
-                        and leader_board[y]["First Place"]["User"] != user
-                    ):
-                        leader_board[y]["Third Place"] = {
-                            "User": user,
-                            y: user_stats[y],
-                        }
-            # endregion Progress Leaderboard
+                        await self.Check_Scores("N/A", "N/A", "Third", y, "Lost")
+                # endregion Check for score loss
+                # region Update scores
+                # If the user stats are more than or equal to the first place
+                if user_stats[y] >= int(leader_board[y]["First Place"][y]):
+                    # If the current user is already in first place
+                    if leader_board[y]["First Place"]["User"] == user:
+                        await self.Check_Scores(user, user_stats, "First", y, "Own")
+                    # If if isn't the user is the score larger than first place
+                    elif user_stats[y] > int(leader_board[y]["First Place"][y]):
+                        await self.Check_Scores(user, user_stats, "First", y, "Other")
+                # If the user stats are more than the second place, but not first place
+                elif user_stats[y] >= int(leader_board[y]["Second Place"][y]):
+                    # If the current user is already in second place
+                    if leader_board[y]["Second Place"]["User"] == user:
+                        await self.Check_Scores(user, user_stats, "Second", y, "Own")
+                    # If if isn't the user is the score larger than second place
+                    elif user_stats[y] > int(leader_board[y]["Second Place"][y]):
+                        await self.Check_Scores(user, user_stats, "Second", y, "Other")
+                # If the user stats are more than the third place, but not second place
+                elif user_stats[y] >= int(leader_board[y]["Third Place"][y]):
+                    # If the current user is already in third place
+                    if leader_board[y]["Third Place"]["User"] == user:
+                        await self.Check_Scores(user, user_stats, "Third", y, "Own")
+                    # If if isn't the user is the score larger than third place
+                    elif user_stats[y] > int(leader_board[y]["Third Place"][y]):
+                        await self.Check_Scores(user, user_stats, "Third", y, "Other")
+                # endregion Update scores
         # Save to json
         with open(leaderboard_file_path, "w") as outputfile:
             json.dump(leader_board, outputfile, sort_keys=False, indent=4)
@@ -655,7 +643,7 @@ class Good_Day_Bot(discord.Client):
 # Setting the bots intentions
 intents = discord.Intents.default()
 intents.message_content = True
-# Starting and conencting the bot
+# Starting and connecting the bot
 client = Good_Day_Bot(
     intents=intents,
     activity=discord.Game(name=f"\U0001F62D Nobody Is Having A Good Day \U0001F62D"),
