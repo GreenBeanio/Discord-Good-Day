@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # region Import Modules
 import discord
-from discord.ext import tasks
+from discord.ext import tasks, commands
 import asyncio
 import os
 from dotenv import load_dotenv
@@ -64,14 +64,26 @@ with open(leaderboard_file_path) as inputfile:
         pass
 # endregion Initializing
 # Class for the Good Day bot
-class Good_Day_Bot(discord.Client):
+class Good_Day_Bot(commands.Bot):
+
+    ### Init to use commands inside the class
+    def __init__(self, command_prefix, intents, activity):
+        commands.Bot.__init__(
+            self,
+            command_prefix=command_prefix,
+            intents=intents,
+            activity=activity,
+        )
+        # Activate the commands
+        self.add_commands()
+
     # When the bot connects to Discord
     async def on_ready(self):
         # Printing a log message
         print(f"{self.user.name} Bot: connected to the server")
         # Starting with a Daily Refresh
         await self.Daily_Refresh()
-        # Wating until midnight tomorrow to start the loop (if it isn't already running somehow)
+        # Waiting until midnight tomorrow to start the loop (if it isn't already running somehow)
         if not self.Daily_Refresh_Loop.is_running():
             # Getting time until midnight
             time_until_midnight = await self.Time_Until_Midnight()
@@ -80,7 +92,7 @@ class Good_Day_Bot(discord.Client):
             # Start a refresh loop
             await self.Daily_Refresh_Loop.start()
 
-    # When someone sends a message in the server
+    ### When someone sends a message in the server
     async def on_message(self, message):
         # Don't respond to yourself
         if message.author != self.user:
@@ -93,130 +105,157 @@ class Good_Day_Bot(discord.Client):
             #    "Channel": message.channel,
             # }
             # print(message_information)
-            # Check if the input is a command, by checkign the first letter for a "!"
-            if message.content[0:1] == "!":
-                # Check the first 5 for the "!days" command
-                if message.content[0:5] == "!days":
-                    # Variable for the user to check
-                    user = ""
-                    # Check player names stats
-                    if len(message.content) == 5:
-                        # If the string is only "!days" get themselves
-                        user = str(message.author.id)
-                    else:
-                        # If the string has more attempt to get the mention
-                        split_message = str(message.content).split(
-                            " ", 2
-                        )  # 0 is the command, 1 is the name, 2 is whatever else could follow
-                        user = split_message[1][
-                            2:-1
-                        ]  # User should be the only thing in the first split, and remvoing discord @ characters <@id>
-                    # If they have had a good day
-                    if str(user) in good_days:
-                        # Updating the streak, just in case they haven't been having good days and updating it
-                        await self.Update_Stats(
-                            user=str(user),
-                            day=await self.Get_Today(output_string=False),
-                            update=False,
-                        )
-                        # Writing the information
-                        day_number = good_days[user]["Stats"]["Good Days"]
-                        last_day = good_days[user]["Stats"]["Last Good Day"]
-                        top_streak = good_days[user]["Streaks"]["Top Streak"]
-                        current_streak = good_days[user]["Streaks"]["Current Streak"]
-                        await message.channel.send(
-                            f"\U0001F913 <@{user}> has the following: \U0001F913\
+            # If the user says "good day" in their message
+            if "good day" in str(message.content).lower():
+                # Update the activity for the user having a good day, even if they already did it today
+                await self.update_presence(user=message.author.name)
+                # Update the data on their good day status
+                today = await self.Get_Today(output_string=False)
+                await self.Check_User_Days(user=str(message.author.id), day=today)
+        # Have to add this for on_message to work with commands
+        await self.process_commands(message)
+
+    ### Implementing Commands
+    def add_commands(self):
+        # Add the command for getting the days
+        @self.command(name="days", help="Get's the amount of days a user has had.")
+        async def days(ctx):
+            # Variable for the user to check
+            user = ""
+            # Check player names stats
+            if len(ctx.message.content) == 5:
+                # If the string is only "!days" get themselves
+                user = str(ctx.author.id)
+            else:
+                # If the string has more attempt to get the mention
+                split_message = str(ctx.message.content).split(
+                    " ", 2
+                )  # 0 is the command, 1 is the name, 2 is whatever else could follow
+                user = split_message[1][
+                    2:-1
+                ]  # User should be the only thing in the first split, and remvoing discord @ characters <@id>
+            # If they have had a good day
+            if str(user) in good_days:
+                # Updating the streak, just in case they haven't been having good days and updating it
+                await self.Update_Stats(
+                    user=str(user),
+                    day=await self.Get_Today(output_string=False),
+                    update=False,
+                )
+                # Writing the information
+                day_number = good_days[user]["Stats"]["Good Days"]
+                last_day = good_days[user]["Stats"]["Last Good Day"]
+                top_streak = good_days[user]["Streaks"]["Top Streak"]
+                current_streak = good_days[user]["Streaks"]["Current Streak"]
+                await ctx.channel.send(
+                    f"\U0001F913 <@{user}> has the following: \U0001F913\
                                 \n\U0001F975 They've had {day_number} Good Days! \U0001F975\
                                 \n\U0001F92F Their Last Good Day was {last_day}! \U0001F92F\
                                 \n\U0001F973 Their Top Streak was {top_streak}! \U0001F973\
                                 \n\U0001F60E Their Current Streak is {current_streak}! \U0001F60E"
-                        )
-                    else:
-                        # Send message that they've never had a good day :(
-                        await message.channel.send(
-                            "\U0001F62D I'm so sorry. They have never had a good day \U0001F62D"
-                        )
+                )
+            else:
+                # Send message that they've never had a good day :(
+                await ctx.channel.send(
+                    "\U0001F62D I'm so sorry. They have never had a good day \U0001F62D"
+                )
 
-                # Check the first 12 for the "!leaderboard" command
-                elif message.content[0:12] == "!leaderboard":
-                    # Initailize the leaderboard if it is empty
-                    if len(leader_board) == 0:
-                        await self.update_leaderboard(user="")
-                    # Getting the message text
-                    message_text = ""  # Used for storing the result
-                    for x in leader_board:
-                        message_text += f"\n-------------------------------------------------\
+        # Add the command for leaderboard
+        @self.command(name="leaderboard", help="Get's the leaderboard.")
+        async def leaderboard(ctx):
+            # Initailize the leaderboard if it is empty
+            if len(leader_board) == 0:
+                await self.update_leaderboard(user="")
+            # Getting the message text
+            message_text = ""  # Used for storing the result
+            for x in leader_board:
+                message_text += f"\n-------------------------------------------------\
                         \n{x}\
                         \n-------------------------------------------------"
-                        for y in ["First Place", "Second Place", "Third Place"]:
-                            # If the user isn't empty
-                            if leader_board[x][y]["User"] != "Empty":
-                                # HaHa Emoji
-                                emoji = ""
-                                if y == "First Place":
-                                    emoji = "\U0001F438"
-                                elif y == "Second Place":
-                                    emoji = "\U0001F98E"
-                                elif y == "Third Place":
-                                    emoji = "\U0001F422"
-                                message_text += f'\n{y}: {emoji} <@{leader_board[x][y]["User"]}> with {leader_board[x][y][x]} days! {emoji}'
-                            else:
-                                message_text += (
-                                    f"\n{y}: \U0001F614 No \U0001F635 One \U0001F631"
-                                )
-                    message_text += (
-                        f"\n-------------------------------------------------"
-                    )
-                    # Send message
-                    await message.channel.send(message_text)
-                # Check the first 5 for the "!help" command
-                elif message.content[0:5] == "!help":
-                    # Gives instructions
-                    await message.channel.send(
-                        'Do "!days" to see your stats\nDo "!days @user" to see their stats\nDo "!leaderboard" to see the leaderboard\nDo "!uptime" to see how long the bot has been running\
-                            \nDo "!time" to see times\nDo "!help" to see commands\nRemember to say "Good Day!"',
-                    )
-                # Check uptime
-                elif message.content[0:7] == "!uptime":
-                    # Calculate Timedelta of Time from Start
-                    uptime_delta = (
-                        await self.Get_Today(output_string=False) - start_time
-                    )
-                    # Convert into string
-                    elapsed = await self.Timedelta_To_String(
-                        timedelta=uptime_delta, include_day=True
-                    )
-                    await message.channel.send(
-                        f"\U0001F607 I have been tracking Good Days for {elapsed}! \U0001F607"
-                    )
-                # Getting times for debug purposes
-                elif message.content[0:5] == "!time":
-                    # Converting today into a string (Doing this separately for timezone)
-                    today_string = datetime.datetime.strftime(
-                        await self.Get_Today(output_string=False),
-                        "%Y-%m-%d %H:%M:%S %Z",
-                    )
-                    # Getting time until Midnight
-                    time_until_midnight = await self.Time_Until_Midnight()
-                    # Convert into string
-                    time_until_string = await self.Timedelta_To_String(
-                        timedelta=time_until_midnight, include_day=False
-                    )
-                    # Message times for debugging purposes
-                    output = str(
-                        f"Today: {today_string}\nTime Until Tomorrow: {time_until_string}"
-                    )
-                    await message.channel.send(output)
-            # If it's not a command check for and record good days
-            elif "day" in str(message.content).lower():
-                if "good" in str(message.content).lower():
-                    # Update the activity for the user having a good day, even if they already did it today
-                    await self.update_presence(user=message.author.name)
-                    # Update the data on their good day status
-                    today = await self.Get_Today(output_string=False)
-                    await self.Check_User_Days(user=str(message.author.id), day=today)
+                for y in ["First Place", "Second Place", "Third Place"]:
+                    # If the user isn't empty
+                    if leader_board[x][y]["User"] != "Empty":
+                        # HaHa Emoji
+                        emoji = ""
+                        if y == "First Place":
+                            emoji = "\U0001F438"
+                        elif y == "Second Place":
+                            emoji = "\U0001F98E"
+                        elif y == "Third Place":
+                            emoji = "\U0001F422"
+                        message_text += f'\n{y}: {emoji} <@{leader_board[x][y]["User"]}> with {leader_board[x][y][x]} days! {emoji}'
+                    else:
+                        message_text += (
+                            f"\n{y}: \U0001F614 No \U0001F635 One \U0001F631"
+                        )
+            message_text += f"\n-------------------------------------------------"
+            # Send message
+            await ctx.message.channel.send(message_text)
 
-    # Updates who is having a good day
+        # Add the command to get the uptime
+        @self.command(name="uptime", help="Get's the uptime of the server.")
+        async def uptime(ctx):
+            # Calculate Timedelta of Time from Start
+            uptime_delta = await self.Get_Today(output_string=False) - start_time
+            # Convert into string
+            elapsed = await self.Timedelta_To_String(
+                timedelta=uptime_delta, include_day=True
+            )
+            await ctx.message.channel.send(
+                f"\U0001F607 I have been tracking Good Days for {elapsed}! \U0001F607"
+            )
+
+        # Add the command to get the time
+        @self.command(name="time", help="Get's the time of the server.")
+        async def time(ctx):
+            # Converting today into a string (Doing this separately for timezone)
+            today_string = datetime.datetime.strftime(
+                await self.Get_Today(output_string=False),
+                "%Y-%m-%d %H:%M:%S %Z",
+            )
+            # Getting time until Midnight
+            time_until_midnight = await self.Time_Until_Midnight()
+            # Convert into string
+            time_until_string = await self.Timedelta_To_String(
+                timedelta=time_until_midnight, include_day=False
+            )
+            # Message times for debugging purposes
+            output = str(
+                f"Today: {today_string}\nTime Until Tomorrow: {time_until_string}"
+            )
+            await ctx.message.channel.send(output)
+
+        # Add the custom help command
+        @self.command(name="help+", help="Get's more help information.")
+        async def help_(ctx):
+            # Gives instructions
+            await ctx.message.channel.send(
+                'Do "!days" to see your stats.\nDo "!days @user" to see their stats.\nDo "!leaderboard" to see the leaderboard.\nDo "!uptime" to see how long the bot has been running.\
+                            \nDo "!time" to see times.\nDo "!debug" to see debug information.\nDo "!help" to see commands.\nDo "!help+" for more in-depth command information.\nRemember to say "Good Day!"',
+            )
+
+        # Add the debug command
+        @self.command(name="debug", help="Debug information.")
+        async def debug(ctx):
+            # Get debug information
+            server_debug = f"{ctx.message.guild}\n{ctx.message.guild.id}"
+            channel_debug = f"{ctx.message.channel}\n{ctx.message.channel.id}"
+            user_debug = f"{ctx.message.author}\n{ctx.message.author.id}"
+            message_debug = f"{ctx.message.content}"
+            mention_debug = f"{ctx.message.mentions}"
+            # Make a string to return
+            print_string = (
+                f"===============\nDebug\n===============\n"
+                f"Server\n---------------\n{server_debug}\n"
+                f"===============\nChannel\n---------------\n{channel_debug}\n"
+                f"===============\nUser\n---------------\n{user_debug}\n"
+                f"===============\nMessage\n---------------\n{message_debug}\n"
+                f"===============\nMentions\n---------------\n{mention_debug}\n==============="
+            )
+            # Gives instructions
+            await ctx.message.channel.send(print_string)
+
+    ### Updates who is having a good day
     async def update_presence(self, user=""):
         activity = ""
         if user != "":
@@ -229,7 +268,7 @@ class Good_Day_Bot(discord.Client):
             )
         await self.change_presence(activity=activity)
 
-    # Checking Dictionary
+    ### Checking Dictionary
     async def Check_User_Days(self, user, day):
         # Have to have good_days be global
         global good_days
@@ -645,7 +684,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 # Starting and connecting the bot
 client = Good_Day_Bot(
+    command_prefix="!",
     intents=intents,
     activity=discord.Game(name=f"\U0001F62D Nobody Is Having A Good Day \U0001F62D"),
 )
+
 client.run(discord_token)
